@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicLong
 import org.matrix.vector.ipc.LoadedModule
 import org.matrix.vector.ipc.IProcessChannel
 import org.matrix.vector.ipc.IFrameworkService
+import org.matrix.vector.daemon.BuildConfig
 import org.matrix.vector.daemon.data.ConfigCache
 import org.matrix.vector.daemon.data.FileSystem
 import org.matrix.vector.daemon.system.FIRST_APPLICATION_UID
@@ -307,7 +308,10 @@ object FrameworkService : IFrameworkService.Stub() {
     // postStartManager compares the caller against the pid the daemon launched the manager into,
     // so this reports a decision already taken rather than making one. It is its own call because it
     // answers a different question from the one that opens the APK, not because it costs anything.
-    if (!ManagerService.postStartManager(pid) && !ConfigCache.isManager(uid)) return null
+    // The shell uid is the parasitic manager's, and shared with every shell process: for it only
+    // the pid registered by tryRegisterManagerProcess counts. An installed manager is its own uid.
+    val installedManager = ConfigCache.isManager(uid) && uid != BuildConfig.MANAGER_INJECTED_UID
+    if (!ManagerService.postStartManager(pid) && !installedManager) return null
     return ManagerService.obtainManagerBinder(info.heartBeat, pid, uid)
   }
 }

@@ -121,9 +121,30 @@ object ManagerService : IManagerService.Stub() {
     return true
   }
 
+  /**
+   * Whether [pid] was forked by a root zygote, read by the daemon from /proc rather than taken from
+   * the caller. The parasitic manager runs as the shell uid, which any `adb shell` or Shizuku
+   * client also has; what they cannot have is a zygote parent. The process's own name is no help:
+   * at registration zygote has not yet renamed the child.
+   */
+  private fun isZygoteChild(pid: Int): Boolean =
+      runCatching {
+            fun status(p: Int, key: String) =
+                File("/proc/$p/status").readLines().first { it.startsWith("$key:") }
+                    .substringAfter(':').trim().split(Regex("\\s+"))[0].toInt()
+            val ppid = status(pid, "PPid")
+            val parent = File("/proc/$ppid/cmdline").readText().substringBefore('\u0000')
+            status(ppid, "Uid") == 0 && (parent == "zygote" || parent == "zygote64")
+          }
+          .getOrDefault(false)
+
   @Synchronized
   fun tryRegisterManagerProcess(pid: Int, uid: Int, processName: String): Boolean {
     if (ConfigCache.isManager(uid) && processName == BuildConfig.DEFAULT_MANAGER_PACKAGE_NAME) {
+      if (uid == BuildConfig.MANAGER_INJECTED_UID && !isZygoteChild(pid)) {
+        Log.w(TAG, "Refused manager registration from pid $pid: not a zygote child.")
+        return false
+      }
       if (pendingManager) {
         Log.v(TAG, "Parasitic manager registered.")
         pendingManager = false
