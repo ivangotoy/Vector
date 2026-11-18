@@ -82,7 +82,7 @@ extern "C" JNIEXPORT void JNICALL Java_org_matrix_vector_daemon_env_Dex2OatServe
         }
 
         PLOGE("Failed to resetprop");
-        exit(1);
+        _exit(1);
     }
 }
 
