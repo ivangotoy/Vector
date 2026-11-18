@@ -34,6 +34,10 @@ internal class VectorURLStreamHandler(jarFileName: String) : Handler() {
         return null
     }
 
+    fun close() {
+        jarFile.close()
+    }
+
     @Throws(IOException::class)
     override fun openConnection(url: URL): URLConnection {
         return ClassPathURLConnection(url)

@@ -127,7 +127,7 @@ class VectorModuleClassLoader : ByteBufferDexClassLoader {
     override fun findResource(name: String): URL? {
         return try {
             val urlHandler = VectorURLStreamHandler(apkPath)
-            urlHandler.getEntryUrlOrNull(name)
+            urlHandler.getEntryUrlOrNull(name).also { if (it == null) urlHandler.close() }
         } catch (e: IOException) {
             null
         }
