@@ -280,6 +280,9 @@ object LaunchShortcut {
      * and by nothing a user can install, which makes the broadcast unforgeable by a third party
      * that has guessed the action. It unregisters itself on the first matching delivery.
      */
+    /** The receiver of the pin request still waiting for its confirmation, if any. */
+    private var pendingPin: Pair<Context, BroadcastReceiver>? = null
+
     @SuppressLint("InlinedApi") // RECEIVER_EXPORTED is a constant; the flags overload is API 26.
     private fun callback(context: Context, onPinned: () -> Unit): IntentSender? =
         runCatching {
@@ -288,10 +291,19 @@ object LaunchShortcut {
                     object : BroadcastReceiver() {
                         override fun onReceive(received: Context, intent: Intent) {
                             if (intent.action != action) return
+                            synchronized(this@LaunchShortcut) {
+                                if (pendingPin?.second === this) pendingPin = null
+                            }
                             context.unregisterReceiver(this)
                             onPinned()
                         }
                     }
+                // One slot: a pin that was declined or ignored never delivers, so its receiver is
+                // dropped when the next request is made instead of staying for the process's life.
+                synchronized(this@LaunchShortcut) {
+                    pendingPin?.let { (owner, old) -> runCatching { owner.unregisterReceiver(old) } }
+                    pendingPin = null
+                }
                 context.registerReceiver(
                     receiver,
                     IntentFilter(action),
@@ -299,6 +311,7 @@ object LaunchShortcut {
                     null, // the main thread
                     Context.RECEIVER_EXPORTED,
                 )
+                synchronized(this@LaunchShortcut) { pendingPin = context to receiver }
                 PendingIntent.getBroadcast(
                         context,
                         0,
