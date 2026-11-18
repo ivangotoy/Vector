@@ -25,9 +25,11 @@ extern "C" JNIEXPORT void JNICALL Java_org_matrix_vector_daemon_env_Dex2OatServe
     char dex2oat32[PATH_MAX], dex2oat64[PATH_MAX];
     if (realpath("bin/dex2oat32", dex2oat32) == nullptr) {
         PLOGE("resolve realpath for bin/dex2oat32");
+        dex2oat32[0] = '\0';
     }
     if (realpath("bin/dex2oat64", dex2oat64) == nullptr) {
         PLOGE("resolve realpath for bin/dex2oat64");
+        dex2oat64[0] = '\0';
     }
 
     const char *r32p = r32 ? env->GetStringUTFChars(r32, nullptr) : nullptr;
