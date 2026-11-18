@@ -81,6 +81,8 @@ grep -q "release list URL not replaced" "$S/notreplaced/out.log" && ok "second g
 # GitHubRepository.versionCode() (ZIP_PREFIX asset, last run of 3+ digits)
 grep -qF 'private const val ZIP_PREFIX = "Vector-"' "$ROOT/$KT" && grep -qF 'Regex("(\\d{3,})")' "$ROOT/$KT" \
     && ok "versionCode() rule unchanged in GitHubRepository.kt" || bad "versionCode() rule changed: update this test"
+grep -qF 'private const val SHA256_PREFIX = "sha256:"' "$ROOT/$KT" && grep -qF '"digest"] = "sha256:" + zip_sha' "$ROOT/.forgejo/module-ci.conf" \
+    && ok "feed digest prefix matches the one the manager checks" || bad "feed digest prefix and GitHubRepository.kt differ"
 mkdir -p "$S/rel/.forgejo"
 python3 -I - "$S/rel/.forgejo/releases.json" <<'PY'
 import json, sys

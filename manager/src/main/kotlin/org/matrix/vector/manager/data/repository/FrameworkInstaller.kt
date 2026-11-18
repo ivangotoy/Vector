@@ -3,6 +3,7 @@ package org.matrix.vector.manager.data.repository
 import android.content.Context
 import java.io.File
 import java.io.IOException
+import java.security.MessageDigest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -115,7 +116,7 @@ class FrameworkInstaller(
      * refused means untouched: clearing [lines] on a press that starts nothing would empty the log
      * of the flash that is actually running.
      */
-    fun start(url: String, declaredSize: Long, fileName: String) {
+    fun start(url: String, declaredSize: Long, fileName: String, sha256: String? = null) {
         if (job?.isActive == true) return
         _lines.value = emptyList()
         // Built here rather than on the download's own thread so that [cancelDownload] has
@@ -141,7 +142,7 @@ class FrameworkInstaller(
         // Here rather than when the first byte lands: opening the connection can take seconds, and
         // a press that leaves the Install button sitting where it was reads as a press that missed.
         _state.value = FlashStep.Downloading(0, declaredSize)
-        job = scope.launch { flash(call, declaredSize, fileName) }
+        job = scope.launch { flash(call, declaredSize, fileName, sha256) }
     }
 
     /**
@@ -207,10 +208,10 @@ class FrameworkInstaller(
      * there is nothing to stop, because an installer half way through writing a module tree cannot
      * be recalled and abandoning the wait would throw away the exit code and change nothing else.
      */
-    private suspend fun flash(call: Call, declaredSize: Long, fileName: String) {
+    private suspend fun flash(call: Call, declaredSize: Long, fileName: String, sha256: String?) {
         val zip =
             try {
-                download(call, declaredSize, fileName)
+                download(call, declaredSize, fileName, sha256)
             } catch (_: DownloadAbandoned) {
                 // Called off, not broken. Nothing reached the device and nothing is left in the
                 // cache, so there is no failure to report and nothing for the reader to put away:
@@ -240,7 +241,12 @@ class FrameworkInstaller(
         }
     }
 
-    private suspend fun download(call: Call, declaredSize: Long, fileName: String): File =
+    private suspend fun download(
+        call: Call,
+        declaredSize: Long,
+        fileName: String,
+        sha256: String?,
+    ): File =
         withContext(Dispatchers.IO) {
             val target = File(context.cacheDir, fileName)
 
@@ -267,6 +273,15 @@ class FrameworkInstaller(
                         }
                     }
                 }
+                // Flashed as root, so a release that states a digest gets exactly that file.
+                if (sha256 != null) {
+                    val got = sha256Hex(target)
+                    if (got != sha256) {
+                        throw IOException(
+                            "sha256 of the downloaded zip is $got, the release states $sha256"
+                        )
+                    }
+                }
                 target
             } catch (e: Throwable) {
                 // Nothing will ever finish what is on disk. A transfer that stopped in the middle
@@ -287,6 +302,19 @@ class FrameworkInstaller(
                 transfer = null
             }
         }
+
+    private fun sha256Hex(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buffer = ByteArray(DOWNLOAD_BUFFER)
+            while (true) {
+                val read = input.read(buffer)
+                if (read == -1) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
+    }
 
     /**
      * Runs the daemon-side install and suspends until it reports an exit code.

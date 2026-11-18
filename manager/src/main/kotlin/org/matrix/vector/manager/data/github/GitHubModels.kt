@@ -245,6 +245,8 @@ data class GhReleaseAsset(
     val name: String,
     val size: Long = 0,
     @SerialName("browser_download_url") val downloadUrl: String? = null,
+    /** `sha256:<hex>`, as GitHub and this fork's releases.json state it; absent on older entries. */
+    val digest: String? = null,
 )
 
 /**
@@ -361,6 +363,8 @@ data class CanaryArtifact(
     val name: String,
     val sizeInBytes: Long,
     val downloadUrl: String?,
+    /** The sha256 the download must have, lower-case hex; null when the release states none. */
+    val sha256: String? = null,
 ) {
     val variant: ZipVariant
         get() =

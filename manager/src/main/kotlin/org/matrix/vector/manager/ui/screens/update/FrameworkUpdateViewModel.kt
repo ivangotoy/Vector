@@ -215,7 +215,7 @@ class FrameworkUpdateViewModel : ViewModel() {
                     logE("update: flash pressed but zip ${zip.name} has no download url")
                     return
                 }
-        installer.start(url, zip.sizeInBytes, zip.name)
+        installer.start(url, zip.sizeInBytes, zip.name, zip.sha256)
     }
 
     /**
