@@ -32,7 +32,9 @@ fun fetchStoreSubresource(
     if (!request.method.equals("GET", ignoreCase = true)) return blocked()
 
     return try {
-        val response = client.newCall(Request.Builder().url(url.toString()).build()).execute()
+        val httpRequest = Request.Builder().url(url.toString()).build()
+        if (isLocalAddress(httpRequest.url.host)) return blocked()
+        val response = client.newCall(httpRequest).execute()
         val type = response.body.contentType()
         if (!response.isSuccessful || type?.type != "image") {
             response.close()
@@ -43,6 +45,21 @@ fun fetchStoreSubresource(
     } catch (_: Exception) {
         blocked()
     }
+}
+
+/**
+ * Whether [host] (as OkHttp normalised it) is an address on this device or its local network, which
+ * a README has no business making the manager request. Covers literal addresses and `localhost`
+ * only: a public name that resolves to a private address is not caught here.
+ */
+private fun isLocalAddress(host: String): Boolean {
+    val h = host.lowercase()
+    if (h == "localhost" || h.endsWith(".localhost")) return true
+    if (!h.contains(':') && !h.all { it.isDigit() || it == '.' }) return false
+    val address = runCatching { java.net.InetAddress.getByName(h) }.getOrNull() ?: return true
+    return address.isLoopbackAddress || address.isSiteLocalAddress || address.isLinkLocalAddress ||
+        address.isAnyLocalAddress ||
+        (address is java.net.Inet6Address && (address.address[0].toInt() and 0xfe) == 0xfc)
 }
 
 /**
