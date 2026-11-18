@@ -216,6 +216,9 @@ object FileSystem {
 
   /** Recursively sets SELinux context. Crucial for modules to read their data. */
   fun setSelinuxContextRecursive(path: Path, context: String) {
+    // Module apps write inside these trees (their prefs under the misc path); a link there must not
+    // carry the relabel, or the recursion, to its target.
+    if (Files.isSymbolicLink(path)) return
     runCatching {
           SELinux.setFileContext(path.toString(), context)
           if (path.isDirectory()) {
