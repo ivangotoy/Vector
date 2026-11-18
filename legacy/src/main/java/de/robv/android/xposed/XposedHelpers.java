@@ -1765,7 +1765,7 @@ public final class XposedHelpers {
             }
             byte[] md5sum = digest.digest();
             BigInteger bigInt = new BigInteger(1, md5sum);
-            return bigInt.toString(16);
+            return String.format("%032x", bigInt);
         } catch (NoSuchAlgorithmException e) {
             return "";
         }
