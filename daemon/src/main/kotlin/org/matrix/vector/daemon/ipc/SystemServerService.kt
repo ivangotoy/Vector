@@ -181,6 +181,8 @@ object SystemServerService : Binder(), IBinder.DeathRecipient {
 
     when (code) {
       BRIDGE_TRANSACTION_CODE -> {
+        // The uid in the parcel is the sender's word; only system_server itself may register here.
+        if (Binder.getCallingUid() != 1000) return false
         val uid = data.readInt()
         val pid = data.readInt()
         val processName = data.readString() ?: ""
