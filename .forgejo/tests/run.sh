@@ -131,5 +131,18 @@ sys.exit(1 if bad else 0)
 PY
 then :; else fails=$((fails + 1)); fi
 
+# the /data/local/tmp/daemon.apk override is honoured only where the build set debug="true"
+for f in daemon cli; do
+    m="$ROOT/zygisk/module/$f"
+    if grep -qx 'debug="@DEBUG@"' "$m" && grep -qF 'if [ "$debug" = "true" ] && [ -r "$tmpDaemonApk" ]; then' "$m" \
+        && [ "$(grep -c 'tmpDaemonApk" ]' "$m")" = 1 ]; then
+        ok "zygisk/module/$f: daemon.apk override only in debug builds"
+    else
+        bad "zygisk/module/$f: daemon.apk override not limited to debug builds"
+    fi
+done
+grep -q 'include("daemon", "cli")' "$ROOT/zygisk/build.gradle.kts" && ok "build fills @DEBUG@ in daemon and cli" \
+    || bad "build does not fill @DEBUG@ in cli"
+
 echo
 if [ "$fails" = 0 ]; then echo "all checks passed"; else echo "$fails check(s) failed"; exit 1; fi

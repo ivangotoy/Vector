@@ -5,7 +5,7 @@ tmpDaemonApk="/data/local/tmp/daemon.apk"
 debug="@DEBUG@"
 
 # Safely check for debug APK and set classpath
-if [ -r "$tmpDaemonApk" ]; then
+if [ "$debug" = "true" ] && [ -r "$tmpDaemonApk" ]; then
   java_options="-Djava.class.path=$tmpDaemonApk"
   debug="true"
 else
