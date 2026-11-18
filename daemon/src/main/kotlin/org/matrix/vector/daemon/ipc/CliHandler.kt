@@ -221,7 +221,7 @@ object CliHandler {
         if (dbFile.exists()) dbFile.delete()
 
         // VACUUM INTO creates a consistent, defragmented copy without long-term locking.
-        ModuleDatabase.dbHelper.writableDatabase.execSQL("VACUUM INTO '$path'")
+        ModuleDatabase.dbHelper.writableDatabase.execSQL("VACUUM INTO '${path.replace("'", "''")}'")
         "Database backed up successfully to: $path"
       }
       "restore" -> {
