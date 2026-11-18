@@ -40,9 +40,10 @@ object LogcatMonitor {
       map[file] = Unit
       if (map.size > maxEntries) {
         val eldest = map.keys.first()
-        if (eldest.delete()) {
-          map.remove(eldest)
-        }
+        // Dropped even when the delete fails (a file already removed, for one): kept, it would
+        // stay first for good and no later file would ever be pruned.
+        map.remove(eldest)
+        eldest.delete()
       }
     }
   }
