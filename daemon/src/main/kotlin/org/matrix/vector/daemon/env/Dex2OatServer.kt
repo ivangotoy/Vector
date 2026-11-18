@@ -31,6 +31,7 @@ object Dex2OatServer {
   private const val WRAPPER64 = "bin/dex2oat64"
   private const val HOOKER32 = "bin/liboat_hook32.so"
   private const val HOOKER64 = "bin/liboat_hook64.so"
+  private const val CLIENT_TIMEOUT_MS = 2000
 
   private val dex2oatArray = arrayOfNulls<String>(6)
   private val fdArray = arrayOfNulls<FileDescriptor>(6)
@@ -259,12 +260,19 @@ object Dex2OatServer {
             while (true) {
               // This blocks until the C++ wrapper connects
               server.accept().use { client ->
-                val input = client.inputStream
-                val output = client.outputStream
-                val id = input.read()
-                if (id in fdArray.indices && fdArray[id] != null) {
-                  client.setFileDescriptorsForSend(arrayOf(fdArray[id]!!))
-                  output.write(1)
+                // One client at a time: one that connects and sends nothing must not hold up every
+                // later dex2oat run, and a client that times out or hangs up must not end this loop.
+                try {
+                  client.soTimeout = CLIENT_TIMEOUT_MS
+                  val input = client.inputStream
+                  val output = client.outputStream
+                  val id = input.read()
+                  if (id in fdArray.indices && fdArray[id] != null) {
+                    client.setFileDescriptorsForSend(arrayOf(fdArray[id]!!))
+                    output.write(1)
+                  }
+                } catch (e: java.io.IOException) {
+                  Log.w(TAG, "dex2oat wrapper client dropped", e)
                 }
               }
             }
