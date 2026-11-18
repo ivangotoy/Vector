@@ -334,19 +334,24 @@ class ConfigCommand {
   }
 }
 
+/** The daemon runs in the module directory, so a relative path is resolved here, in the caller's. */
+private fun absolutePath(path: String): String =
+    if (path.startsWith("/")) path
+    else java.io.File(android.system.Os.readlink("/proc/self/cwd"), path).path
+
 @Command(name = "db", description = ["Database maintenance"])
 class DatabaseCommand {
   @ParentCommand lateinit var parent: Cli
 
   @Command(name = "backup", description = ["Backup the database to a file"])
   fun backup(@Parameters(paramLabel = "PATH") path: String): Int {
-    val req = CliRequest(command = "db", action = "backup", targets = listOf(path))
+    val req = CliRequest(command = "db", action = "backup", targets = listOf(absolutePath(path)))
     return OutputFormatter.print(VectorIPC.transmit(req), parent.json)
   }
 
   @Command(name = "restore", description = ["Restore the database from a file"])
   fun restore(@Parameters(paramLabel = "PATH") path: String): Int {
-    val req = CliRequest(command = "db", action = "restore", targets = listOf(path))
+    val req = CliRequest(command = "db", action = "restore", targets = listOf(absolutePath(path)))
     return OutputFormatter.print(VectorIPC.transmit(req), parent.json)
   }
 
