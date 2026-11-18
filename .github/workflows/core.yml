@@ -82,7 +82,7 @@ jobs:
             echo "androidKeyPassword=$KEY_PASSWORD"
             echo "androidStoreFile=key.jks"
           } >> gradle.properties
-          printf '%s' "$KEY_STORE" | base64 --decode > key.jks
+          (umask 077; printf '%s' "$KEY_STORE" | base64 --decode > key.jks)
 
       - name: Setup Java
         uses: actions/setup-java@v5

@@ -189,6 +189,8 @@ for f in daemon cli; do
         bad "zygisk/module/$f: daemon.apk override not limited to debug builds"
     fi
 done
+grep -qxF "          (umask 077; printf '%s' \"\$KEY_STORE\" | base64 --decode > key.jks)" "$ROOT/.github/workflows/core.yml" \
+    && ok "core.yml writes key.jks under umask 077" || bad "core.yml writes key.jks under the default umask"
 grep -q 'include("daemon", "cli")' "$ROOT/zygisk/build.gradle.kts" && ok "build fills @DEBUG@ in daemon and cli" \
     || bad "build does not fill @DEBUG@ in cli"
 
