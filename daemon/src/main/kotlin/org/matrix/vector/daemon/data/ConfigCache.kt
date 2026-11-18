@@ -123,6 +123,9 @@ object ConfigCache {
           Paths.get(pathStr)
         }
     synchronized(this) { state = state.copy(miscPath = path) }
+    // uninstall.sh has no database access; this plain copy is how it finds the directory to remove
+    runCatching { FileSystem.basePath.resolve("misc_path").toFile().writeText("$path\n") }
+        .onFailure { Log.w(TAG, "Failed to record the misc path", it) }
 
     runCatching {
           val perms =

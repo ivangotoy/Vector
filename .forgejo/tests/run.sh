@@ -194,5 +194,40 @@ grep -qxF "          (umask 077; printf '%s' \"\$KEY_STORE\" | base64 --decode >
 grep -q 'include("daemon", "cli")' "$ROOT/zygisk/build.gradle.kts" && ok "build fills @DEBUG@ in daemon and cli" \
     || bad "build does not fill @DEBUG@ in cli"
 
+# uninstall.sh: removes the recorded /data/misc/<uuid> only when the record is exactly that shape;
+# /data/adb/lspd goes in every case. Run with sh under a fake root.
+U=0123abcd-4567-89ab-cdef-0123456789ab
+uninstall_case() {
+    local name="$1" record="$2" want_gone="$3" r="$S/un-$1"
+    mkdir -p "$r/data/adb/lspd/config" "$r/data/misc/$U" "$r/data/misc/keep" "$r/data/adb/other"
+    touch "$r/data/misc/$U/prefs" "$r/data/misc/keep/f" "$r/data/adb/other/f"
+    [ "$record" = "-" ] || printf '%b' "$record" > "$r/data/adb/lspd/misc_path"
+    VECTOR_TEST_ROOT="$r" sh "$ROOT/zygisk/module/uninstall.sh"
+    local got=kept
+    [ -e "$r/data/misc/$U" ] || got=gone
+    if [ "$got" = "$want_gone" ] && [ ! -e "$r/data/adb/lspd" ] && [ -f "$r/data/misc/keep/f" ] \
+        && [ -f "$r/data/adb/other/f" ] && [ -d "$r/data/misc" ]; then
+        ok "uninstall.sh: $name"
+    else
+        bad "uninstall.sh: $name (misc dir $got, want $want_gone)"
+    fi
+}
+uninstall_case "recorded misc dir removed" "/data/misc/$U\n" gone
+uninstall_case "record without final newline" "/data/misc/$U" gone
+uninstall_case "no record" - kept
+uninstall_case "empty record" "" kept
+uninstall_case "dot-dot" "/data/misc/../adb\n" kept
+uninstall_case "dot-dot after uuid" "/data/misc/$U/../keep\n" kept
+uninstall_case "trailing slash" "/data/misc/$U/\n" kept
+uninstall_case "misc root" "/data/misc\n" kept
+uninstall_case "upper-case uuid" "/data/misc/0123ABCD-4567-89ab-cdef-0123456789ab\n" kept
+uninstall_case "relative path" "data/misc/$U\n" kept
+uninstall_case "trailing space" "/data/misc/$U \n" kept
+uninstall_case "CRLF" "/data/misc/$U\r\n" kept
+uninstall_case "two lines" "/data/misc/$U\n/data/misc/keep\n" kept
+uninstall_case "glob" "/data/misc/*\n" kept
+grep -qF 'basePath.resolve("misc_path")' "$ROOT/daemon/src/main/kotlin/org/matrix/vector/daemon/data/ConfigCache.kt" \
+    && ok "daemon records the misc path where uninstall.sh reads it" || bad "daemon does not record misc_path"
+
 echo
 if [ "$fails" = 0 ]; then echo "all checks passed"; else echo "$fails check(s) failed"; exit 1; fi
