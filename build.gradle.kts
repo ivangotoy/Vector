@@ -306,6 +306,9 @@ subprojects {
                         // Enforce 16 KB page size alignment for Android 15+ compatibility
                         "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384",
                         "-DCMAKE_EXE_LINKER_FLAGS=-Wl,-z,max-page-size=16384",
+                        // CMake 4.5+ offers `import std` to C++20+ targets and probes the host
+                        // libstdc++ for it, which the NDK clang cannot compile; nothing here uses it
+                        "-DCMAKE_CXX_COMPILER_IMPORT_STD_ERROR_MESSAGE=not-used-by-the-android-cross-build",
                     )
 
                 externalNativeBuild {
