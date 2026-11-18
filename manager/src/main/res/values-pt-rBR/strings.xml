@@ -150,6 +150,7 @@
     <string name="scope_clear_visible">Desmarcar tudo que está à mostra</string>
     <string name="scope_backup_done">Escopo salvo.</string>
     <string name="scope_backup_failed">Não foi possível ler nem gravar esse arquivo.</string>
+    <string name="scope_restore_empty">Este arquivo não tem entradas de escopo. O escopo ficou como estava.</string>
     <string name="scope_select">Seleção</string>
     <string name="scope_sort">Ordenar</string>
     <string name="scope_modules">Outros módulos</string>

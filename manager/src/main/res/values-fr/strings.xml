@@ -150,6 +150,7 @@
     <string name="scope_clear_visible">Tout désélectionner à l\'écran</string>
     <string name="scope_backup_done">Portée enregistrée.</string>
     <string name="scope_backup_failed">Impossible de lire ou d\'écrire ce fichier.</string>
+    <string name="scope_restore_empty">Ce fichier ne contient aucune entrée de portée. La portée est restée inchangée.</string>
     <string name="scope_select">Sélection</string>
     <string name="scope_sort">Trier</string>
     <string name="scope_modules">Autres modules</string>

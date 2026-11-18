@@ -162,6 +162,7 @@
     <string name="scope_clear_visible">Зняти вибір з усього показаного</string>
     <string name="scope_backup_done">Область дії збережено.</string>
     <string name="scope_backup_failed">Не вдалося прочитати або записати цей файл.</string>
+    <string name="scope_restore_empty">У цьому файлі немає записів області дії. Область дії залишено без змін.</string>
     <string name="scope_select">Вибір</string>
     <string name="scope_sort">Сортування</string>
     <string name="scope_modules">Інші модулі</string>

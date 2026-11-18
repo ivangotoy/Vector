@@ -144,6 +144,7 @@
     <string name="scope_clear_visible">表示中のすべてを解除</string>
     <string name="scope_backup_done">適用範囲を保存しました。</string>
     <string name="scope_backup_failed">そのファイルを読み書きできませんでした。</string>
+    <string name="scope_restore_empty">このファイルには適用範囲の項目がありません。適用範囲は変更していません。</string>
     <string name="scope_select">選択</string>
     <string name="scope_sort">並べ替え</string>
     <string name="scope_modules">ほかのモジュール</string>

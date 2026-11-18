@@ -150,6 +150,7 @@
     <string name="scope_clear_visible">برداشتن گزینش همهٔ موارد نمایان</string>
     <string name="scope_backup_done">دامنه ذخیره شد.</string>
     <string name="scope_backup_failed">خواندن یا نوشتن آن پرونده ممکن نشد.</string>
+    <string name="scope_restore_empty">این پرونده هیچ مورد دامنه‌ای ندارد. دامنه همان‌طور که بود باقی ماند.</string>
     <string name="scope_select">گزینش</string>
     <string name="scope_sort">چینش</string>
     <string name="scope_modules">ماژول‌های دیگر</string>

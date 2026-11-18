@@ -149,6 +149,7 @@
     <string name="scope_clear_visible">Снять со всего показанного</string>
     <string name="scope_backup_done">Область действия сохранена.</string>
     <string name="scope_backup_failed">Не удалось прочитать или записать этот файл.</string>
+    <string name="scope_restore_empty">В этом файле нет записей области действия. Область действия оставлена без изменений.</string>
     <string name="scope_select">Выбор</string>
     <string name="scope_sort">Сортировка</string>
     <string name="scope_modules">Другие модули</string>

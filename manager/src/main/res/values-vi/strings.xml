@@ -144,6 +144,7 @@
     <string name="scope_clear_visible">Bỏ chọn hết những mục đang hiện</string>
     <string name="scope_backup_done">Đã lưu phạm vi.</string>
     <string name="scope_backup_failed">Không đọc hoặc ghi được tệp đó.</string>
+    <string name="scope_restore_empty">Tệp này không có mục phạm vi nào. Phạm vi được giữ nguyên.</string>
     <string name="scope_select">Chọn</string>
     <string name="scope_sort">Sắp xếp</string>
     <string name="scope_modules">Mô-đun khác</string>

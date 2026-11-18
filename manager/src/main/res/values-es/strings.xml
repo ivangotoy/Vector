@@ -150,6 +150,7 @@
     <string name="scope_clear_visible">Deseleccionar todo lo que se muestra</string>
     <string name="scope_backup_done">Ámbito guardado.</string>
     <string name="scope_backup_failed">No se pudo leer ni escribir ese archivo.</string>
+    <string name="scope_restore_empty">Este archivo no tiene entradas de ámbito. El ámbito se ha dejado como estaba.</string>
     <string name="scope_select">Selección</string>
     <string name="scope_sort">Ordenar</string>
     <string name="scope_modules">Otros módulos</string>

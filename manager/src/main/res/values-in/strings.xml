@@ -148,6 +148,7 @@
     <string name="scope_clear_visible">Batalkan pilihan semua yang tampil</string>
     <string name="scope_backup_done">Cakupan disimpan.</string>
     <string name="scope_backup_failed">Berkas itu tidak bisa dibaca atau ditulis.</string>
+    <string name="scope_restore_empty">Berkas ini tidak berisi entri cakupan. Cakupan dibiarkan seperti semula.</string>
     <string name="scope_select">Pilihan</string>
     <string name="scope_sort">Urutkan</string>
     <string name="scope_modules">Modul lain</string>

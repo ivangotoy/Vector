@@ -166,6 +166,7 @@ fun ScopeScreen(
     val context = LocalContext.current
     val scopeSaved = stringResource(R.string.scope_backup_done)
     val scopeFailed = stringResource(R.string.scope_backup_failed)
+    val scopeEmpty = stringResource(R.string.scope_restore_empty)
 
     fun report(result: PackageActionResult) {
         val text =
@@ -191,8 +192,11 @@ fun ScopeScreen(
     val scopeRestoreLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) {
-                viewModel.restoreScopeFrom(uri) { ok ->
-                    if (!ok) scope.launch { snackbars.show(scopeFailed, SnackbarTone.Failure) }
+                viewModel.restoreScopeFrom(uri) { entries ->
+                    when (entries) {
+                        null -> scope.launch { snackbars.show(scopeFailed, SnackbarTone.Failure) }
+                        0 -> scope.launch { snackbars.show(scopeEmpty, SnackbarTone.Failure) }
+                    }
                 }
             }
         }

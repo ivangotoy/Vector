@@ -976,7 +976,8 @@ class ScopeViewModel(
         }
     }
 
-    fun restoreScopeFrom(uri: android.net.Uri, onDone: (Boolean) -> Unit) {
+    /** [onDone] gets the number of entries put in the draft: null when the file could not be read. */
+    fun restoreScopeFrom(uri: android.net.Uri, onDone: (Int?) -> Unit) {
         viewModelScope.launch {
             val targets =
                 withContext(Dispatchers.IO) {
@@ -997,12 +998,16 @@ class ScopeViewModel(
                         .getOrNull()
                 }
             if (targets == null) {
-                onDone(false)
+                onDone(null)
+            } else if (targets.isEmpty()) {
+                // A file with no entries is almost always the wrong file: the draft is kept, and a
+                // scope meant to be empty is cleared in the list instead.
+                onDone(0)
             } else {
                 // Into the draft, not straight to the daemon: a restore is an edit like any
                 // other, and the user should see what it will do before it is written.
                 draftScope.value = targets
-                onDone(true)
+                onDone(targets.size)
             }
         }
     }

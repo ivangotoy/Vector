@@ -242,6 +242,7 @@
     <string name="scope_clear_visible">Wyczyść wszystko, co jest pokazane</string>
     <string name="scope_backup_done">Zakres zapisany.</string>
     <string name="scope_backup_failed">Nie udało się odczytać ani zapisać tego pliku.</string>
+    <string name="scope_restore_empty">Ten plik nie zawiera wpisów zakresu. Zakres pozostał bez zmian.</string>
     <string name="scope_select">Zaznacz</string>
     <string name="scope_sort">Sortuj</string>
     <string name="scope_modules">Inne moduły</string>

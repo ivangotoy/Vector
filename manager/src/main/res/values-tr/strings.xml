@@ -150,6 +150,7 @@
     <string name="scope_clear_visible">Görünenlerin seçimini kaldır</string>
     <string name="scope_backup_done">Kapsam kaydedildi.</string>
     <string name="scope_backup_failed">Bu dosya okunamadı ya da yazılamadı.</string>
+    <string name="scope_restore_empty">Bu dosyada kapsam girdisi yok. Kapsam olduğu gibi bırakıldı.</string>
     <string name="scope_select">Seçim</string>
     <string name="scope_sort">Sırala</string>
     <string name="scope_modules">Diğer modüller</string>

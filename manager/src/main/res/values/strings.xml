@@ -240,6 +240,7 @@
     <string name="scope_clear_visible">Clear everything shown</string>
     <string name="scope_backup_done">Scope saved.</string>
     <string name="scope_backup_failed">Could not read or write that file.</string>
+    <string name="scope_restore_empty">This file has no scope entries. The scope was left as it was.</string>
     <string name="scope_select">Selection</string>
     <string name="scope_sort">Sort</string>
     <string name="scope_modules">Other modules</string>

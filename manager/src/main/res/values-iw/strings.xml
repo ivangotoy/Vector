@@ -166,6 +166,7 @@
     <string name="scope_clear_visible">ביטול הבחירה בכל מה שמוצג</string>
     <string name="scope_backup_done">התחום נשמר.</string>
     <string name="scope_backup_failed">לא ניתן היה לקרוא או לכתוב את הקובץ הזה.</string>
+    <string name="scope_restore_empty">בקובץ הזה אין רשומות תחום. התחום נשאר כפי שהיה.</string>
     <string name="scope_select">בחירה</string>
     <string name="scope_sort">מיון</string>
     <string name="scope_modules">מודולים אחרים</string>

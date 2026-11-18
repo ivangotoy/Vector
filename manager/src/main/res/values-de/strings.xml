@@ -150,6 +150,7 @@
     <string name="scope_clear_visible">Auswahl für alles Angezeigte aufheben</string>
     <string name="scope_backup_done">Geltungsbereich gespeichert.</string>
     <string name="scope_backup_failed">Diese Datei konnte nicht gelesen oder geschrieben werden.</string>
+    <string name="scope_restore_empty">Diese Datei enthält keine Einträge für den Geltungsbereich. Der Geltungsbereich bleibt unverändert.</string>
     <string name="scope_select">Auswahl</string>
     <string name="scope_sort">Sortieren</string>
     <string name="scope_modules">Andere Module</string>
