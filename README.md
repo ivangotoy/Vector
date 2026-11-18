@@ -45,16 +45,15 @@ Vector supports devices running **Android 8.1 through Android 17 Beta**.
 | Channel | Source |
 | :--- | :--- |
 | **Stable Releases** | [GitHub Releases](https://github.com/JingMatrix/Vector/releases) |
-| **Canary (CI) Builds** | [GitHub Actions](https://github.com/JingMatrix/Vector/actions/workflows/core.yml?query=branch%3Amaster) |
+| **Canary (CI) Builds** | [`canary-<versionCode>` prereleases](https://github.com/JingMatrix/Vector/releases) |
 
 > [!NOTE]
 > Debug builds are recommended for users encountering issues or performing troubleshooting.
 > We encourage users to test CI builds to help us identify bugs and accelerate development.
 
 > [!CAUTION]
-> GitHub requires users to be **logged in** to download CI artifacts.
+> Each push to `master` (other than a release commit) is published as a `canary-<versionCode>` prerelease with its Release and Debug zips; the five most recent are kept. They download without a GitHub account, and the manager offers them on its canary channel.
 >
-> The link above is filtered to show only `master` branch builds.
 > Please note that builds from Pull Requests (PRs) are often unstable and potentially unsafe (depending on the authors); we recommend staying on the `master` branch for verified builds, unless you are asked to help our debugging sessions.
 
 ---
