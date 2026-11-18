@@ -65,7 +65,8 @@ class ModuleInstaller(private val context: Context, private val client: OkHttpCl
     suspend fun install(packageName: String, asset: ReleaseAsset): Boolean =
         withContext(Dispatchers.IO) {
             val url = asset.downloadUrl
-            if (url == null || !asset.isApk) {
+            // https only: from the shell identity this install needs no confirmation from the user.
+            if (url == null || !url.startsWith("https://", ignoreCase = true) || !asset.isApk) {
                 _state.value = InstallStep.Failed(packageName, null)
                 return@withContext false
             }
