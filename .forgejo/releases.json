@@ -1,0 +1,20 @@
+[
+  {
+    "id": 3122,
+    "tag_name": "v2.2-3122-a78e7dc2-ivangotoy-Vector-ci2",
+    "name": "Vector v2.2 (3122-a78e7dc2-ivangotoy-Vector)-ci2",
+    "prerelease": false,
+    "target_commitish": "a78e7dc24aa873753885cfbffd19f4e2846642ce",
+    "published_at": "2026-11-18T13:52:15Z",
+    "html_url": "https://git.digtvbg.com/ivangotoy/Vector/releases/tag/v2.2-3122-a78e7dc2-ivangotoy-Vector-ci2",
+    "body": "Built by module-release #2 from a78e7dc24aa8 (JingMatrix/Vector@master 6f6b976e3315).\nversionCode 3122\nsha256 7c499e02e7d2e47638fa1c61c528a6c2b33241541fe1b7ea02d020b8c3e912e6  Vector-v2.2-3122-a78e7dc2-ivangotoy-Vector-ci2.zip\nupdateJson https://git.digtvbg.com/ivangotoy/Vector/raw/branch/main/.forgejo/update.json",
+    "assets": [
+      {
+        "id": 3122,
+        "name": "Vector-v2.2-3122-Release.zip",
+        "size": 7431851,
+        "browser_download_url": "https://git.digtvbg.com/ivangotoy/Vector/releases/download/v2.2-3122-a78e7dc2-ivangotoy-Vector-ci2/Vector-v2.2-3122-a78e7dc2-ivangotoy-Vector-ci2.zip"
+      }
+    ]
+  }
+]

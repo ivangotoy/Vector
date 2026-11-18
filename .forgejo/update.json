@@ -1,6 +1,6 @@
 {
-  "version": "v2.2 (3120-35be7ae2-ivangotoy-Vector)-ci1",
-  "versionCode": 3120,
-  "zipUrl": "https://git.digtvbg.com/ivangotoy/Vector/releases/download/v2.2-3120-35be7ae2-ivangotoy-Vector-ci1/Vector-v2.2-3120-35be7ae2-ivangotoy-Vector-ci1.zip",
-  "changelog": "https://git.digtvbg.com/ivangotoy/Vector/raw/commit/35be7ae24e0baf25eaffd053e4c3dd243dad95eb/zygisk/changelog.md"
+  "version": "v2.2 (3122-a78e7dc2-ivangotoy-Vector)-ci2",
+  "versionCode": 3122,
+  "zipUrl": "https://git.digtvbg.com/ivangotoy/Vector/releases/download/v2.2-3122-a78e7dc2-ivangotoy-Vector-ci2/Vector-v2.2-3122-a78e7dc2-ivangotoy-Vector-ci2.zip",
+  "changelog": "https://git.digtvbg.com/ivangotoy/Vector/raw/commit/a78e7dc24aa873753885cfbffd19f4e2846642ce/zygisk/changelog.md"
 }
