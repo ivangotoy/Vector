@@ -216,13 +216,16 @@ object ManagerService : IManagerService.Stub() {
 
   /** Fixes permissions for the WebView cache. */
   private fun fixWebViewPermissions(file: File, targetUid: Int) {
+    // The shell user owns this tree and can place links in it: relabelling, chowning or descending
+    // through one would hand the link's target to uid 2000.
+    if (java.nio.file.Files.isSymbolicLink(file.toPath())) return
     if (!file.exists()) return
 
     // Set the SELinux label that allows apps to read/write shared xposed data
     SELinux.setFileContext(file.absolutePath, "u:object_r:xposed_file:s0")
 
     // Change ownership to the target UID (e.g., 2000)
-    runCatching { android.system.Os.chown(file.absolutePath, targetUid, targetUid) }
+    runCatching { android.system.Os.lchown(file.absolutePath, targetUid, targetUid) }
         .onFailure { Log.e(TAG, "Failed to chown ${file.path}", it) }
 
     // Recurse into directories
