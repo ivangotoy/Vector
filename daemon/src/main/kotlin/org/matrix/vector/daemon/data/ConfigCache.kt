@@ -622,8 +622,12 @@ object ConfigCache {
       runCatching {
             // Ensure the directory exists first
             if (!Files.exists(path)) {
-              Files.createDirectories(path)
+              Files.createDirectories(
+                  path, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx--x--x")))
             }
+            // The prefs<user> parent is not part of the walk below; it was created 0777 under the
+            // daemon's zero umask. Searchable, not listable or writable, like the misc root.
+            Os.chmod(path.parent.toString(), "711".toInt(8))
 
             Files.walk(path).use { stream ->
               stream.forEach { p ->

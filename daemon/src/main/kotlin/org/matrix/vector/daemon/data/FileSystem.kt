@@ -545,12 +545,19 @@ object FileSystem {
                       ?: return@runCatching null
 
               dir.toFile().deleteRecursively()
-              Files.createDirectories(dir)
+              // Created with their final modes: under the daemon's zero umask the defaults are
+              // 0777 and 0666, writable by every domain the xposed_data label lets in.
+              Files.createDirectories(
+                  dir, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx--x--x")))
 
               libraries
                   .filter { it.name.startsWith("lib/$abi/") }
                   .forEach { entry ->
                     val target = dir.resolve(entry.name.substringAfterLast('/'))
+                    Files.deleteIfExists(target) // two entries with one file name: last wins
+                    Files.createFile(
+                        target,
+                        PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-r--r--")))
                     zip.getInputStream(entry).use { input ->
                       Files.newOutputStream(target).use { input.copyTo(it) }
                     }
