@@ -79,6 +79,7 @@ object FrameworkService : IFrameworkService.Stub() {
     override fun binderDied() {
       heartBeat.unlinkToDeath(this, 0)
       processes.remove(key)
+      ManagerService.forgetManagerPid(key.pid)
       targetIds.values.forEach { hotReloadTargets.remove(it) }
     }
   }

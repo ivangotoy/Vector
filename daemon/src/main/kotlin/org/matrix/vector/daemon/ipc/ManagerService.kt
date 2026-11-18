@@ -117,8 +117,13 @@ object ManagerService : IManagerService.Stub() {
   fun preStartManager(): Boolean {
     Log.v(TAG, "Pre-start parasitic manager.")
     pendingManager = true
-    managerPid = -1
     return true
+  }
+
+  /** Called when a registered process dies, so its pid cannot stand for the manager afterwards. */
+  @Synchronized
+  fun forgetManagerPid(pid: Int) {
+    if (managerPid == pid) managerPid = -1
   }
 
   /**
