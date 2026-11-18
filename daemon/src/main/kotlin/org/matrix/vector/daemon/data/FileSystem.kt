@@ -203,8 +203,11 @@ object FileSystem {
           val fd = Os.open(path.toString(), OsConstants.O_RDONLY, 0)
           // 0x40086602 for 64-bit, 0x40046602 for 32-bit (FS_IOC_SETFLAGS)
           val req = if (Process.is64Bit()) 0x40086602 else 0x40046602
-          HiddenApiBridge.Os_ioctlInt(fd, req, 0)
-          Os.close(fd)
+          try {
+            HiddenApiBridge.Os_ioctlInt(fd, req, 0)
+          } finally {
+            Os.close(fd)
+          }
           true
         }
         .recover { e -> if (e is ErrnoException && e.errno == OsConstants.ENOTSUP) true else false }
