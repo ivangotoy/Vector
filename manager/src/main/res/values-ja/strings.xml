@@ -98,6 +98,7 @@
     <string name="modules_restore">モジュールを復元</string>
     <string name="modules_backup_done">%1$d 個のモジュールとその適用範囲をバックアップしました。</string>
     <string name="modules_backup_failed">バックアップを書き込めませんでした。</string>
+    <string name="modules_backup_partial">%1$d 個のモジュールをバックアップしましたが、%2$s の適用範囲を読み取れなかったため空で保存しました。</string>
     <string name="modules_restore_done">%1$d 個のモジュールを復元しました。このデバイスにはインストールされていない %2$d 個のモジュールはスキップされました。</string>
     <string name="modules_restore_failed">そのバックアップを読み込めませんでした。</string>
     <string name="modules_search_hint">モジュールを検索</string>

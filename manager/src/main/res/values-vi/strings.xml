@@ -98,6 +98,7 @@
     <string name="modules_restore">Khôi phục mô-đun</string>
     <string name="modules_backup_done">Đã sao lưu %1$d mô-đun cùng phạm vi của chúng.</string>
     <string name="modules_backup_failed">Không ghi được bản sao lưu.</string>
+    <string name="modules_backup_partial">Đã sao lưu %1$d mô-đun, nhưng không đọc được phạm vi của %2$s nên đã lưu trống.</string>
     <string name="modules_restore_done">Đã khôi phục %1$d mô-đun, bỏ qua %2$d mô-đun chưa cài ở đây.</string>
     <string name="modules_restore_failed">Không đọc được bản sao lưu đó.</string>
     <string name="modules_search_hint">Tìm mô-đun</string>

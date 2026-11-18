@@ -102,6 +102,7 @@
     <string name="modules_restore">Pulihkan modul</string>
     <string name="modules_backup_done">%1$d modul dan cakupannya telah dicadangkan.</string>
     <string name="modules_backup_failed">Cadangan tidak bisa ditulis.</string>
+    <string name="modules_backup_partial">%1$d modul telah dicadangkan, tetapi cakupan %2$s tidak bisa dibaca dan disimpan kosong.</string>
     <string name="modules_restore_done">%1$d modul dipulihkan, %2$d dilewati karena tidak terpasang di sini.</string>
     <string name="modules_restore_failed">Cadangan itu tidak bisa dibaca.</string>
     <string name="modules_search_hint">Cari modul</string>

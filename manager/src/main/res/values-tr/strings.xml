@@ -103,6 +103,7 @@
     <string name="modules_restore">Modülleri geri yükle</string>
     <string name="modules_backup_done">%1$d modül ve kapsamları yedeklendi.</string>
     <string name="modules_backup_failed">Yedek yazılamadı.</string>
+    <string name="modules_backup_partial">%1$d modül yedeklendi, ancak %2$s kapsamı okunamadı ve boş kaydedildi.</string>
     <string name="modules_restore_done">%1$d modül geri yüklendi, burada kurulu olmayan %2$d tanesi atlandı.</string>
     <string name="modules_restore_failed">Bu yedek okunamadı.</string>
     <string name="modules_search_hint">Modül ara</string>

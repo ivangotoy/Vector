@@ -104,6 +104,7 @@
     <string name="modules_restore">Восстановить модули</string>
     <string name="modules_backup_done">Сохранено модулей: %1$d, вместе с их областью действия.</string>
     <string name="modules_backup_failed">Не удалось записать резервную копию.</string>
+    <string name="modules_backup_partial">Сохранено модулей: %1$d, но область действия %2$s прочитать не удалось, она сохранена пустой.</string>
     <string name="modules_restore_done">Восстановлено: %1$d, пропущено (не установлены здесь): %2$d.</string>
     <string name="modules_restore_failed">Не удалось прочитать эту резервную копию.</string>
     <string name="modules_search_hint">Поиск модулей</string>

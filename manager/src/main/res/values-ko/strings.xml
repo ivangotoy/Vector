@@ -98,6 +98,7 @@
     <string name="modules_restore">모듈 복원</string>
     <string name="modules_backup_done">모듈 %1$d개와 적용 범위를 백업했습니다.</string>
     <string name="modules_backup_failed">백업을 기록하지 못했습니다.</string>
+    <string name="modules_backup_partial">모듈 %1$d개를 백업했지만 %2$s의 적용 범위를 읽지 못해 빈 상태로 저장했습니다.</string>
     <string name="modules_restore_done">모듈 %1$d개를 복원하고, 이 기기에 없는 %2$d개는 건너뛰었습니다.</string>
     <string name="modules_restore_failed">그 백업을 읽지 못했습니다.</string>
     <string name="modules_search_hint">모듈 검색</string>

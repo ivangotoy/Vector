@@ -222,6 +222,28 @@ fun ModulesScreen(
     val scope = rememberCoroutineScope()
     val backedUp = stringResource(R.string.modules_backup_done)
     val backupFailed = stringResource(R.string.modules_backup_failed)
+    val backupPartial = stringResource(R.string.modules_backup_partial)
+    // A backup whose scope reads failed is written but incomplete: said with the failure tone,
+    // naming the modules saved without a scope.
+    val showBackup: (org.matrix.vector.manager.data.repository.BackupRepository.BackupOutcome?) -> Unit =
+        { outcome ->
+            scope.launch {
+                when {
+                    outcome == null -> snackbars.show(backupFailed, SnackbarTone.Failure)
+                    outcome.unreadableScopes.isEmpty() ->
+                        snackbars.show(String.format(backedUp, outcome.modules), SnackbarTone.Success)
+                    else ->
+                        snackbars.show(
+                            String.format(
+                                backupPartial,
+                                outcome.modules,
+                                outcome.unreadableScopes.joinToString(", "),
+                            ),
+                            SnackbarTone.Failure,
+                        )
+                }
+            }
+        }
     val restored = stringResource(R.string.modules_restore_done)
     val restoreFailed = stringResource(R.string.modules_restore_failed)
 
@@ -229,12 +251,7 @@ fun ModulesScreen(
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/gzip")) {
             uri ->
             if (uri != null) {
-                viewModel.backupTo(uri) { count ->
-                    scope.launch {
-                        if (count != null) snackbars.show(String.format(backedUp, count), SnackbarTone.Success)
-                        else snackbars.show(backupFailed, SnackbarTone.Failure)
-                    }
-                }
+                viewModel.backupTo(uri, showBackup)
             }
         }
 
@@ -242,13 +259,7 @@ fun ModulesScreen(
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/gzip")) {
             uri ->
             if (uri != null) {
-                viewModel.backupSelectedTo(uri) { count ->
-                    scope.launch {
-                        if (count != null)
-                            snackbars.show(String.format(backedUp, count), SnackbarTone.Success)
-                        else snackbars.show(backupFailed, SnackbarTone.Failure)
-                    }
-                }
+                viewModel.backupSelectedTo(uri, showBackup)
             }
         }
 

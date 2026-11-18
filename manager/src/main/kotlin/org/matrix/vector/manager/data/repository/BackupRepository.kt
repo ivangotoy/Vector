@@ -48,6 +48,12 @@ class BackupRepository(private val context: Context, private val daemon: DaemonC
 
     private val json = Json { ignoreUnknownKeys = true }
 
+    /**
+     * Result of a backup: [modules] written, and the packages among them whose scope could not be
+     * read and is therefore saved empty, so the UI can call the backup partial instead of done.
+     */
+    data class BackupOutcome(val modules: Int, val unreadableScopes: List<String>)
+
     /** Result of a restore, so the UI can say what actually happened rather than "done". */
     data class RestoreOutcome(val restored: Int, val skipped: Int)
 
@@ -58,9 +64,10 @@ class BackupRepository(private val context: Context, private val daemon: DaemonC
      * hands in; empty means everything currently enabled. The file format is identical either way,
      * so a partial backup restores through exactly the same path as a whole one.
      */
-    suspend fun backupTo(uri: Uri, only: Set<String> = emptySet()): Result<Int> =
+    suspend fun backupTo(uri: Uri, only: Set<String> = emptySet()): Result<BackupOutcome> =
         withContext(Dispatchers.IO) {
             runCatching {
+                val unreadable = mutableListOf<String>()
                 val enabled =
                     daemon.getEnabledModules().getOrThrow().let {
                         if (only.isEmpty()) it else it.filter { pkg -> pkg in only }
@@ -71,6 +78,7 @@ class BackupRepository(private val context: Context, private val daemon: DaemonC
                             daemon
                                 .getModuleScope(packageName)
                                 .onFailure { e ->
+                                    unreadable += packageName
                                     logW(
                                         "backup: scope of $packageName unreadable, saved as empty",
                                         e,
@@ -92,7 +100,7 @@ class BackupRepository(private val context: Context, private val daemon: DaemonC
                     }
                 } ?: error("could not open the chosen file for writing")
 
-                modules.size
+                BackupOutcome(modules.size, unreadable)
             }
                 .onFailure { e ->
                     if (e is CancellationException) throw e

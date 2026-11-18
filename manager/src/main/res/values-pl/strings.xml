@@ -190,6 +190,7 @@
     <string name="modules_restore">Przywróć moduły</string>
     <string name="modules_backup_done">Zapisano %1$d modułów wraz z ich zakresami.</string>
     <string name="modules_backup_failed">Nie udało się zapisać kopii.</string>
+    <string name="modules_backup_partial">Zapisano %1$d modułów, ale zakresu %2$s nie udało się odczytać i zapisano go jako pusty.</string>
     <string name="modules_restore_done">Przywrócono %1$d modułów, pominięto %2$d, które nie zostały tutaj zainstalowane.</string>
     <string name="modules_restore_failed">Nie udało się odczytać tej kopii.</string>
     <string name="modules_search_hint">Wyszukaj moduły</string>

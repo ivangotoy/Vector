@@ -103,6 +103,7 @@
     <string name="modules_restore">Ripristina i moduli</string>
     <string name="modules_backup_done">Salvati %1$d moduli e i loro ambiti.</string>
     <string name="modules_backup_failed">Impossibile scrivere la copia.</string>
+    <string name="modules_backup_partial">Salvati %1$d moduli, ma non è stato possibile leggere l\'ambito di %2$s, salvato vuoto.</string>
     <string name="modules_restore_done">Ripristinati %1$d moduli, saltati %2$d non installati qui.</string>
     <string name="modules_restore_failed">Impossibile leggere quella copia.</string>
     <string name="modules_search_hint">Cerca moduli</string>

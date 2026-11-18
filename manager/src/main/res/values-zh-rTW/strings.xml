@@ -98,6 +98,7 @@
     <string name="modules_restore">還原模組</string>
     <string name="modules_backup_done">已備份 %1$d 個模組及其範圍。</string>
     <string name="modules_backup_failed">無法寫入備份檔案。</string>
+    <string name="modules_backup_partial">已備份 %1$d 個模組，但無法讀取 %2$s 的範圍，已儲存為空。</string>
     <string name="modules_restore_done">已還原 %1$d 個模組，略過 %2$d 個本機未安裝的模組。</string>
     <string name="modules_restore_failed">無法讀取該備份檔案。</string>
     <string name="modules_search_hint">搜尋模組</string>

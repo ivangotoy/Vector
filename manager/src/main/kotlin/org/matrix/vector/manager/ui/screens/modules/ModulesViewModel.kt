@@ -271,10 +271,13 @@ class ModulesViewModel(
         _sort.value = value
     }
 
-    fun backupTo(uri: android.net.Uri, onResult: (Int?) -> Unit) {
+    fun backupTo(
+        uri: android.net.Uri,
+        onResult: (org.matrix.vector.manager.data.repository.BackupRepository.BackupOutcome?) -> Unit,
+    ) {
         viewModelScope.launch {
-            val count = ServiceLocator.backup.backupTo(uri).getOrNull()
-            onResult(count)
+            val outcome = ServiceLocator.backup.backupTo(uri).getOrNull()
+            onResult(outcome)
         }
     }
 
@@ -385,12 +388,15 @@ class ModulesViewModel(
     }
 
     /** Backs up only what is selected, using the same file format as a whole-collection backup. */
-    fun backupSelectedTo(uri: android.net.Uri, onResult: (Int?) -> Unit) {
+    fun backupSelectedTo(
+        uri: android.net.Uri,
+        onResult: (org.matrix.vector.manager.data.repository.BackupRepository.BackupOutcome?) -> Unit,
+    ) {
         val targets = _selection.value.map { it.packageName }.toSet()
         viewModelScope.launch {
-            val count = ServiceLocator.backup.backupTo(uri, targets).getOrNull()
+            val outcome = ServiceLocator.backup.backupTo(uri, targets).getOrNull()
             _selection.value = emptySet()
-            onResult(count)
+            onResult(outcome)
         }
     }
 

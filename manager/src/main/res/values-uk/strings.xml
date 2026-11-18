@@ -113,6 +113,7 @@
     <string name="modules_restore">Відновити модулі</string>
     <string name="modules_backup_done">Збережено %1$d модулів та їхні області дії.</string>
     <string name="modules_backup_failed">Не вдалося записати копію.</string>
+    <string name="modules_backup_partial">Збережено %1$d модулів, але область дії %2$s не вдалося прочитати, її збережено порожньою.</string>
     <string name="modules_restore_done">Відновлено %1$d модулів, пропущено %2$d, яких тут немає.</string>
     <string name="modules_restore_failed">Не вдалося прочитати цю копію.</string>
     <string name="modules_search_hint">Пошук модулів</string>

@@ -185,6 +185,7 @@
     <string name="modules_restore">Restore modules</string>
     <string name="modules_backup_done">Backed up %1$d modules and their scopes.</string>
     <string name="modules_backup_failed">Could not write the backup.</string>
+    <string name="modules_backup_partial">Backed up %1$d modules, but the scope of %2$s could not be read and was saved empty.</string>
     <string name="modules_restore_done">Restored %1$d modules, skipped %2$d not installed here.</string>
     <string name="modules_restore_failed">Could not read that backup.</string>
     <string name="modules_search_hint">Search modules</string>

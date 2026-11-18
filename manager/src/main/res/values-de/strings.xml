@@ -103,6 +103,7 @@
     <string name="modules_restore">Module wiederherstellen</string>
     <string name="modules_backup_done">%1$d Module und ihre Geltungsbereiche gesichert.</string>
     <string name="modules_backup_failed">Die Sicherung konnte nicht geschrieben werden.</string>
+    <string name="modules_backup_partial">%1$d Module gesichert, aber der Geltungsbereich von %2$s konnte nicht gelesen werden und wurde leer gespeichert.</string>
     <string name="modules_restore_done">%1$d Module wiederhergestellt, %2$d übersprungen, die hier nicht installiert sind.</string>
     <string name="modules_restore_failed">Diese Sicherung konnte nicht gelesen werden.</string>
     <string name="modules_search_hint">Module durchsuchen</string>
