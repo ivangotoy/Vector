@@ -96,6 +96,7 @@ run_rf() {
     . "$1"
     SERVER_URL=https://forge.example REPOSITORY=owner/repo TAG=v9.9-3200-0123abcd-owner-repo-ci7
     VERSION="$2" VC=3200 SRC_SHA=0123abcd0123abcd0123abcd0123abcd0123abcd
+    ZIP_SHA="${RF_ZIP_SHA-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}"
     BODY="Built by module-release #7" ZIP_SIZE=4242 ZIP_URL="https://forge.example/owner/repo/releases/download/$TAG/Vector-$TAG.zip"
     release_files
     printf "%s" "$RELEASE_FILES"' _ "$ROOT/.forgejo/module-ci.conf" "${2:-v9.9 (3200-0123abcd-owner-repo)-ci7}" 2>"$1/err.log")
@@ -126,6 +127,7 @@ checks = [
     ("download url, size, commit", rels[0]["assets"][0]["browser_download_url"].endswith(f"/{tag}/Vector-{tag}.zip")
         and rels[0]["assets"][0]["size"] == 4242 and rels[0]["target_commitish"] == "0123abcd" * 5),
     ("release page", rels[0]["html_url"] == f"https://forge.example/owner/repo/releases/tag/{tag}"),
+    ("asset digest", rels[0]["assets"][0].get("digest") == "sha256:" + "0123456789abcdef" * 4),
 ]
 bad = 0
 for name, good in checks:
@@ -164,6 +166,14 @@ feed_case "feed not a list" '{"id": 1}' "" '{"n": 1}'
 feed_case "non-dict entries dropped" '[1, "x", null, {"id": 3100, "tag_name": "v9.8-3100", "assets": []}]' "" '{"n": 2}'
 feed_case "version without v prefix" '[]' "9.9 (3200-0123abcd-owner-repo)-ci7" \
     '{"n": 1, "asset": "Vector-9.9 (3200-0123abcd-owner-repo)-ci7-3200-Release.zip"}'
+mkdir -p "$S/rf-badsha/.forgejo"
+if RF_ZIP_SHA="not-a-sha" run_rf "$S/rf-badsha" >/dev/null \
+    && python3 -I -c 'import json,sys; sys.exit("digest" in json.load(open(sys.argv[1]))[0]["assets"][0])' "$S/rf-badsha/.forgejo/releases.json" \
+    && grep -q "no digest in the feed" "$S/rf-badsha/err.log"; then
+    ok "release_files: a ZIP_SHA that is not a sha256 is left out (logged)"
+else
+    bad "release_files: bad ZIP_SHA not handled"
+fi
 grep -q "starting a new feed" "$S/rf-malformed feed/err.log" && ok "release_files: unreadable feed logged" \
     || bad "release_files: unreadable feed not logged"
 
