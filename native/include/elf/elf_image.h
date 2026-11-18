@@ -4,6 +4,7 @@
 #include <linux/elf.h>
 
 #include <map>
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -177,6 +178,8 @@ private:
     // Lazily-initialized map for fast linear lookups.
     // `mutable` allows init in const methods.
     mutable std::map<std::string_view, ElfW(Sym) *> symtabs_;
+    // Builds symtabs_ once, whichever thread does the first linear lookup.
+    mutable std::once_flag symtabs_once_;
 };
 
 // --- Inlined Hash Function Implementations ---

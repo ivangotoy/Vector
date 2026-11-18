@@ -274,10 +274,11 @@ ElfW(Addr) ElfImage::elfLookup(std::string_view name, uint32_t hash) const {
 
 void ElfImage::ensureLinearMapInitialized() const {
     // Lazily parse the .symtab section and build a map for faster lookups.
-    if (!symtabs_.empty() || !symtab_start_ || !symtab_str_start_) {
+    if (!symtab_start_ || !symtab_str_start_) {
         return;
     }
 
+    std::call_once(symtabs_once_, [this] {
     for (ElfW(Off) i = 0; i < symtab_count_; ++i) {
         auto *sym = &symtab_start_[i];
         unsigned int st_type = ELF_ST_TYPE(sym->st_info);
@@ -287,6 +288,7 @@ void ElfImage::ensureLinearMapInitialized() const {
             symtabs_.emplace(st_name, sym);
         }
     }
+    });
 }
 
 ElfW(Addr) ElfImage::linearLookup(std::string_view name) const {
