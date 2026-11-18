@@ -139,6 +139,9 @@ fun WebScreen(url: String, onNavigateBack: () -> Unit) {
                             // Anything that is not web traffic — intent://, market:// — has to
                             // leave, because a WebView cannot render it.
                             if (scheme != "http" && scheme != "https") {
+                                // Only on a tap: a page that redirects by script must not open
+                                // other apps on its own.
+                                if (!request.hasGesture()) return true
                                 runCatching {
                                     context.startActivity(
                                         Intent(Intent.ACTION_VIEW, target)
