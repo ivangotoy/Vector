@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.CacheControl
 import okhttp3.Call
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -131,7 +132,11 @@ class FrameworkInstaller(
         // is the main one. A release with an unusable asset url would take the app down on a press
         // of Install rather than saying so on the bar.
         val call =
-            runCatching { client.newCall(Request.Builder().url(url).build()) }
+            // noStore: a zip of many megabytes must not push the feeds out of the shared cache.
+            runCatching {
+                    val noStore = CacheControl.Builder().noStore().build()
+                    client.newCall(Request.Builder().url(url).cacheControl(noStore).build())
+                }
                 .getOrElse { e ->
                     logW("update: unusable download url $url", e)
                     append("Download failed: ${e.message}")

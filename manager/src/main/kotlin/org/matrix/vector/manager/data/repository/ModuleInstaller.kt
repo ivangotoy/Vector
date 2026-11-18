@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import okhttp3.CacheControl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.matrix.vector.ui.store.InstallStep
@@ -126,7 +127,9 @@ class ModuleInstaller(private val context: Context, private val client: OkHttpCl
         url: String,
         declaredSize: Long,
     ) {
-        client.newCall(Request.Builder().url(url).build()).execute().use { response ->
+        // noStore: an APK must not push the store catalogue and feeds out of the shared cache.
+        val request = Request.Builder().url(url).cacheControl(CacheControl.Builder().noStore().build())
+        client.newCall(request.build()).execute().use { response ->
             if (!response.isSuccessful) throw IOException("HTTP ${response.code} for $url")
             val body = response.body
             val total = body.contentLength().takeIf { it > 0 } ?: declaredSize
