@@ -90,13 +90,17 @@ rels = [{"id": 3100 - i, "tag_name": f"v9.8-{3100 - i}-ci{20 - i}", "name": f"Ve
 rels[4]["tag_name"] = "v9.9-3200-0123abcd-owner-repo-ci7"
 json.dump(rels, open(sys.argv[1], "w"), indent=2)
 PY
-rf_out="$(cd "$S/rel" && bash -c 'set -euo pipefail
+# run_rf <dir> [version]: release_files() in <dir> as the release step calls it (after publish)
+run_rf() {
+    (cd "$1" && bash -c 'set -euo pipefail
     . "$1"
     SERVER_URL=https://forge.example REPOSITORY=owner/repo TAG=v9.9-3200-0123abcd-owner-repo-ci7
-    VERSION="v9.9 (3200-0123abcd-owner-repo)-ci7" VC=3200 SRC_SHA=0123abcd0123abcd0123abcd0123abcd0123abcd
+    VERSION="$2" VC=3200 SRC_SHA=0123abcd0123abcd0123abcd0123abcd0123abcd
     BODY="Built by module-release #7" ZIP_SIZE=4242 ZIP_URL="https://forge.example/owner/repo/releases/download/$TAG/Vector-$TAG.zip"
     release_files
-    printf "%s" "$RELEASE_FILES"' _ "$ROOT/.forgejo/module-ci.conf" 2>&1)" || bad "release_files failed: $rf_out"
+    printf "%s" "$RELEASE_FILES"' _ "$ROOT/.forgejo/module-ci.conf" "${2:-v9.9 (3200-0123abcd-owner-repo)-ci7}" 2>"$1/err.log")
+}
+rf_out="$(run_rf "$S/rel")" || bad "release_files failed: $(cat "$S/rel/err.log")"
 expect "$rf_out" .forgejo/releases.json "RELEASE_FILES lists the feed"
 if python3 -I - "$S/rel/.forgejo/releases.json" <<'PY'
 import json, re, sys
@@ -130,6 +134,38 @@ for name, good in checks:
 sys.exit(1 if bad else 0)
 PY
 then :; else fails=$((fails + 1)); fi
+[ -z "$(find "$S/rel/.forgejo" -name '.releases.*')" ] && ok "releases.json: no temp file left" || bad "releases.json: temp file left"
+
+# bad data must not stop release_files() after publish: a missing, unreadable, non-list or
+# mixed feed starts over (logged), and a version without the v prefix is used whole
+feed_case() {
+    local name="$1" content="$2" version="${3:-}" want="$4" w="$S/rf-$1"
+    mkdir -p "$w/.forgejo"
+    [ "$content" = "-" ] || printf '%s' "$content" > "$w/.forgejo/releases.json"
+    if run_rf "$w" ${version:+"$version"} >/dev/null; then
+        if python3 -I - "$w/.forgejo/releases.json" "$want" <<'PY'
+import json, re, sys
+rels = json.load(open(sys.argv[1]))
+want = json.loads(sys.argv[2])
+a = rels[0]["assets"][0]["name"]
+runs = re.findall(r"\d{3,}", a)
+ok = (len(rels) == want["n"] and rels[0]["id"] == 3200 and a.lower().startswith("vector-")
+      and runs and int(runs[-1]) == 3200 and a == want.get("asset", a))
+sys.exit(0 if ok else 1)
+PY
+        then ok "release_files: $name"; else bad "release_files: $name (wrong feed)"; fi
+    else
+        bad "release_files: $name (failed: $(tail -n 1 "$w/err.log"))"
+    fi
+}
+feed_case "missing feed" - "" '{"n": 1}'
+feed_case "malformed feed" '[{"id": 1,' "" '{"n": 1}'
+feed_case "feed not a list" '{"id": 1}' "" '{"n": 1}'
+feed_case "non-dict entries dropped" '[1, "x", null, {"id": 3100, "tag_name": "v9.8-3100", "assets": []}]' "" '{"n": 2}'
+feed_case "version without v prefix" '[]' "9.9 (3200-0123abcd-owner-repo)-ci7" \
+    '{"n": 1, "asset": "Vector-9.9 (3200-0123abcd-owner-repo)-ci7-3200-Release.zip"}'
+grep -q "starting a new feed" "$S/rf-malformed feed/err.log" && ok "release_files: unreadable feed logged" \
+    || bad "release_files: unreadable feed not logged"
 
 # the /data/local/tmp/daemon.apk override is honoured only where the build set debug="true"
 for f in daemon cli; do
