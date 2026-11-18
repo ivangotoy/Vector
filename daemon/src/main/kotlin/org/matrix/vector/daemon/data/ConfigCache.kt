@@ -627,6 +627,9 @@ object ConfigCache {
 
             Files.walk(path).use { stream ->
               stream.forEach { p ->
+                // The module owns this tree: a link it placed here must not hand root's chown and
+                // chmod to the link's target.
+                if (Files.isSymbolicLink(p)) return@forEach
                 val pathStr = p.toString()
 
                 // Change Owner
