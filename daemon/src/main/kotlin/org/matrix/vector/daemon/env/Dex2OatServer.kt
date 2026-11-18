@@ -186,7 +186,10 @@ object Dex2OatServer {
             }
           }
         }
-        .onFailure { dex2oatArray[dex2oatArray.indexOf(path)] = null }
+        .onFailure {
+          val index = dex2oatArray.indexOf(path)
+          if (index >= 0) dex2oatArray[index] = null
+        }
   }
 
   private fun notMounted(): Boolean {
