@@ -233,8 +233,20 @@ object CliHandler {
         if (!sourceFile.exists()) throw FileNotFoundException("Source file does not exist: $path")
 
         val currentDbPath = ModuleDatabase.dbHelper.readableDatabase.path
+        // Copied beside the live file, then renamed over it: a copy that fails part-way leaves the
+        // current database intact instead of truncated.
+        val staged = File("$currentDbPath.restore")
+        try {
+          sourceFile.copyTo(staged, overwrite = true)
+        } catch (e: Exception) {
+          staged.delete()
+          throw e
+        }
         ModuleDatabase.dbHelper.close()
-        sourceFile.copyTo(File(currentDbPath), overwrite = true)
+        File("$currentDbPath-wal").delete()
+        File("$currentDbPath-shm").delete()
+        java.nio.file.Files.move(
+            staged.toPath(), File(currentDbPath).toPath(), java.nio.file.StandardCopyOption.ATOMIC_MOVE)
 
         ConfigCache.requestCacheUpdate()
         val miscPath = ConfigCache.state.miscPath
