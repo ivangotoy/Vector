@@ -242,11 +242,18 @@ object CliHandler {
           staged.delete()
           throw e
         }
-        ModuleDatabase.dbHelper.close()
-        File("$currentDbPath-wal").delete()
-        File("$currentDbPath-shm").delete()
-        java.nio.file.Files.move(
-            staged.toPath(), File(currentDbPath).toPath(), java.nio.file.StandardCopyOption.ATOMIC_MOVE)
+        val helper = ModuleDatabase.dbHelper
+        helper.swapLock.lock()
+        try {
+          helper.close()
+          File("$currentDbPath-wal").delete()
+          File("$currentDbPath-shm").delete()
+          java.nio.file.Files.move(
+              staged.toPath(), File(currentDbPath).toPath(), java.nio.file.StandardCopyOption.ATOMIC_MOVE)
+          helper.writableDatabase // reopened before any other thread can open the old path
+        } finally {
+          helper.swapLock.unlock()
+        }
 
         ConfigCache.requestCacheUpdate()
         val miscPath = ConfigCache.state.miscPath
@@ -257,16 +264,23 @@ object CliHandler {
       }
       "reset" -> {
         val currentDbPath = ModuleDatabase.dbHelper.readableDatabase.path
-        ModuleDatabase.dbHelper.close()
+        val helper = ModuleDatabase.dbHelper
+        helper.swapLock.lock()
+        try {
+          helper.close()
 
-        val dbFile = File(currentDbPath)
-        val walFile = File("$currentDbPath-wal")
-        val shmFile = File("$currentDbPath-shm")
+          val dbFile = File(currentDbPath)
+          val walFile = File("$currentDbPath-wal")
+          val shmFile = File("$currentDbPath-shm")
 
-        val deleted = dbFile.delete()
-        if (walFile.exists()) walFile.delete()
-        if (shmFile.exists()) shmFile.delete()
-        if (!deleted) throw IOException("Failed to delete database file.")
+          val deleted = dbFile.delete()
+          if (walFile.exists()) walFile.delete()
+          if (shmFile.exists()) shmFile.delete()
+          if (!deleted) throw IOException("Failed to delete database file.")
+          helper.writableDatabase // schema recreated before any other thread can open it
+        } finally {
+          helper.swapLock.unlock()
+        }
 
         ConfigCache.requestCacheUpdate()
         val miscPath = ConfigCache.state.miscPath

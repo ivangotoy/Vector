@@ -13,6 +13,31 @@ private const val DB_VERSION = 5
 class Database(context: Context? = FakeContext()) :
     SQLiteOpenHelper(context, FileSystem.dbPath.absolutePath, null, DB_VERSION) {
 
+  /**
+   * Taken by every open below, and held by a CLI restore or reset across close, file swap and
+   * reopen, so no other thread opens the database file while it is being replaced. Reentrant,
+   * because the restore and the reset reopen through these getters while holding it.
+   */
+  val swapLock = java.util.concurrent.locks.ReentrantLock()
+
+  override fun getReadableDatabase(): SQLiteDatabase {
+    swapLock.lock()
+    try {
+      return super.getReadableDatabase()
+    } finally {
+      swapLock.unlock()
+    }
+  }
+
+  override fun getWritableDatabase(): SQLiteDatabase {
+    swapLock.lock()
+    try {
+      return super.getWritableDatabase()
+    } finally {
+      swapLock.unlock()
+    }
+  }
+
   override fun onConfigure(db: SQLiteDatabase) {
     super.onConfigure(db)
     db.setForeignKeyConstraintsEnabled(true)
