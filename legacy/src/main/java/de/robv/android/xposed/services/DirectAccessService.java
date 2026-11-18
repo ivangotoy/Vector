@@ -41,9 +41,9 @@ public final class DirectAccessService extends BaseService {
     public byte[] readFile(String filename) throws IOException {
         File file = new File(filename);
         byte content[] = new byte[(int) file.length()];
-        FileInputStream fis = new FileInputStream(file);
-        fis.read(content);
-        fis.close();
+        try (FileInputStream fis = new FileInputStream(file)) {
+            fis.read(content);
+        }
         return content;
     }
 
@@ -83,10 +83,10 @@ public final class DirectAccessService extends BaseService {
         }
 
         byte content[] = new byte[length];
-        FileInputStream fis = new FileInputStream(file);
-        fis.skip(offset);
-        fis.read(content);
-        fis.close();
+        try (FileInputStream fis = new FileInputStream(file)) {
+            fis.skip(offset);
+            fis.read(content);
+        }
         return new FileResult(content, size, time);
     }
 
