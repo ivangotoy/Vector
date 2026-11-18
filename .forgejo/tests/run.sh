@@ -54,7 +54,9 @@ mktree good
 if run_build good https://forge.example; then ok "build-user succeeds"; else bad "build-user failed: $(tail -n 3 "$S/good/out.log")"; fi
 w="$S/good"
 [ -f "$w/.ci-out/module.zip" ] && ok "module.zip left in OUT" || bad "no module.zip in OUT"
+expect "$(cat "$w/probe/mode" 2>/dev/null)" 600 "keystore mode while Gradle runs (umask 022)"
 expect "$(cat "$w/probe/content" 2>/dev/null)" same "keystore holds the decoded secret"
+[ ! -e "$w/.ci-home/key.jks" ] && ok "keystore removed after the build" || bad "keystore left at \$HOME/key.jks"
 expect "$(grep -cF "$NEW" "$w/$KT")" 1 "release list redirected to the forge feed"
 expect "$(grep -cF "$OLD_URL" "$w/$KT")" 0 "GitHub release-list call gone"
 expect "$(diff "$ROOT/$KT" "$w/$KT" | grep -c '^[<>]')" 2 "exactly one line changed"
@@ -62,6 +64,8 @@ expect "$(cd "$w" && git ls-files -v -- "$KT" | cut -c1)" h "GitHubRepository.kt
 
 mktree gradlefail
 if run_build gradlefail https://forge.example STUB_GRADLE_FAIL=1; then bad "failing Gradle not reported"; else ok "failing Gradle fails the build"; fi
+expect "$(cat "$S/gradlefail/probe/mode" 2>/dev/null)" 600 "keystore mode on the failing build"
+[ ! -e "$S/gradlefail/.ci-home/key.jks" ] && ok "keystore removed after a failed build" || bad "keystore left after a failed build"
 
 mktree notfound
 sed -i "s|releases?per_page=|releases?per_page=0+|" "$S/notfound/$KT"
