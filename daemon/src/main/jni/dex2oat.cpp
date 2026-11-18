@@ -38,8 +38,9 @@ extern "C" JNIEXPORT void JNICALL Java_org_matrix_vector_daemon_env_Dex2OatServe
     const char *d64p = d64 ? env->GetStringUTFChars(d64, nullptr) : nullptr;
 
     pid_t pid = fork();
-    if (pid > 0) {  // Parent process
-        waitpid(pid, nullptr, 0);
+    if (pid != 0) {  // Parent process
+        if (pid > 0) waitpid(pid, nullptr, 0);
+        else PLOGE("fork");
 
         // Safely release JNI strings in the parent
         if (r32p) env->ReleaseStringUTFChars(r32, r32p);
