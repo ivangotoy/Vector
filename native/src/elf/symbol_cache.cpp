@@ -21,17 +21,9 @@ std::mutex g_linker_mutex;
 }  // namespace
 
 const ElfImage *ElfSymbolCache::GetArt() {
-    // Double-checked locking pattern for performance.
-    // The first check is lock-free.
-    if (g_art_image) {
-        return g_art_image.get();
-    }
-
-    // If it's null, acquire the lock to perform the initialization safely.
+    // Always under the lock: the unique_ptr is not atomic, so an unlocked read races the
+    // initialisation (and ClearCache's reset) in another thread.
     std::lock_guard<std::mutex> lock(g_art_mutex);
-
-    // Check again inside the lock in case another thread initialized it
-    // while we were waiting for the lock.
     if (!g_art_image) {
         g_art_image = std::make_unique<ElfImage>(kArtLibraryName);
         if (!g_art_image->IsValid()) {
@@ -42,9 +34,6 @@ const ElfImage *ElfSymbolCache::GetArt() {
 }
 
 const ElfImage *ElfSymbolCache::GetLibBinder() {
-    if (g_binder_image) {
-        return g_binder_image.get();
-    }
     std::lock_guard<std::mutex> lock(g_binder_mutex);
     if (!g_binder_image) {
         g_binder_image = std::make_unique<ElfImage>(kBinderLibraryName);
@@ -56,9 +45,6 @@ const ElfImage *ElfSymbolCache::GetLibBinder() {
 }
 
 const ElfImage *ElfSymbolCache::GetLinker() {
-    if (g_linker_image) {
-        return g_linker_image.get();
-    }
     std::lock_guard<std::mutex> lock(g_linker_mutex);
     if (!g_linker_image) {
         g_linker_image = std::make_unique<ElfImage>(kLinkerPath);
