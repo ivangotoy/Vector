@@ -383,8 +383,9 @@ class LogCommand {
             command = "log",
             action = "stream",
             options = mapOf("verbose" to verbose, "follow" to false))
-    VectorIPC.transmit(req)
-    return 0
+    val res = VectorIPC.transmit(req)
+    if (!res.success) System.err.println("Error: ${res.error}")
+    return if (res.success) 0 else 1
   }
 
   @Command(name = "tail", description = ["Follow logs in real-time"])
@@ -397,8 +398,9 @@ class LogCommand {
             command = "log",
             action = "stream",
             options = mapOf("verbose" to verbose, "follow" to true))
-    VectorIPC.transmit(req)
-    return 0
+    val res = VectorIPC.transmit(req)
+    if (!res.success) System.err.println("Error: ${res.error}")
+    return if (res.success) 0 else 1
   }
 
   @Command(name = "clear", description = ["Clear log buffers"])
