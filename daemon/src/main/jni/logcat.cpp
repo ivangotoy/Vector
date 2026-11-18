@@ -116,8 +116,12 @@ size_t Logcat::FastWrite(const AndroidLogEntry& entry, int fd) {
                            {(void*)"\n", add_nl ? 1U : 0U}};
 
     ssize_t n = writev(fd, iov, 5);
-    // If write fails, return kMaxLogSize to force a rotation attempt.
-    return (n <= 0) ? kMaxLogSize : static_cast<size_t>(n);
+    if (n > 0) return static_cast<size_t>(n);
+    // A full disk is not fixed by a new file, and rotating logs "New log file" from this process,
+    // which is written here and fails again: rotation would then repeat for every entry.
+    if (n < 0 && (errno == ENOSPC || errno == EDQUOT)) return 0;
+    // Any other failure: return kMaxLogSize to force a rotation attempt.
+    return kMaxLogSize;
 }
 
 void Logcat::LogRaw(std::string_view str) {
