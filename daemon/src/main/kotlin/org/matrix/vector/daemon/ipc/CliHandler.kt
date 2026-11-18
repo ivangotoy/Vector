@@ -221,7 +221,37 @@ object CliHandler {
         if (dbFile.exists()) dbFile.delete()
 
         // VACUUM INTO creates a consistent, defragmented copy without long-term locking.
-        ModuleDatabase.dbHelper.writableDatabase.execSQL("VACUUM INTO '${path.replace("'", "''")}'")
+        try {
+          ModuleDatabase.dbHelper.writableDatabase.execSQL(
+              "VACUUM INTO '${path.replace("'", "''")}'")
+        } catch (e: android.database.sqlite.SQLiteException) {
+          // VACUUM INTO needs SQLite 3.27; an older platform SQLite rejects it as a syntax error.
+          // Anything else is a real failure and is reported as one.
+          if (e.message?.contains("syntax error") != true) throw e
+          android.util.Log.w("VectorCli", "VACUUM INTO unsupported, copying the closed database", e)
+          val helper = ModuleDatabase.dbHelper
+          val currentDbPath = helper.readableDatabase.path
+          helper.swapLock.lock()
+          try {
+            helper.close()
+            // Closing checkpoints the WAL; a non-empty one left behind means another connection
+            // still writes, and a copy of the main file alone would be torn.
+            if (File("$currentDbPath-wal").length() > 0)
+                throw IOException("Database still in use, backup not written.")
+            try {
+              File(currentDbPath).copyTo(dbFile, overwrite = true)
+            } catch (copyError: Exception) {
+              dbFile.delete()
+              throw copyError
+            }
+          } finally {
+            try {
+              helper.writableDatabase
+            } finally {
+              helper.swapLock.unlock()
+            }
+          }
+        }
         "Database backed up successfully to: $path"
       }
       "restore" -> {
