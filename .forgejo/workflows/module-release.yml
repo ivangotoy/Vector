@@ -20,6 +20,9 @@ jobs:
           SIGN_KEY_ALIAS: ${{ secrets.SIGN_KEY_ALIAS }}
           SIGN_STORE_PASSWORD: ${{ secrets.SIGN_STORE_PASSWORD }}
           SIGN_KEY_PASSWORD: ${{ secrets.SIGN_KEY_PASSWORD }}
+          # the clone runs before module-ci.sh sets these: a stalled transfer fails instead of hanging
+          GIT_HTTP_LOW_SPEED_LIMIT: 1024
+          GIT_HTTP_LOW_SPEED_TIME: 60
         run: |
           set -eu
           git clone -q --branch main "$SERVER_URL/$REPOSITORY.git" src
