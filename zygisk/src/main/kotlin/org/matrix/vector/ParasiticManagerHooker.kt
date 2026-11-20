@@ -475,6 +475,14 @@ object ParasiticManagerHooker {
         }
     }
 
+    /**
+     * Whether the daemon handed this process the manager binder. Set even when [start] fails
+     * afterwards: the process then holds root's manager interface and is no place for modules.
+     */
+    @JvmStatic
+    var managerBinderGranted = false
+        private set
+
     /** Entry point. Checks if the current process should host the parasitic manager. */
     @JvmStatic
     fun start(): Boolean {
@@ -482,6 +490,7 @@ object ParasiticManagerHooker {
             // Asked first: a process the daemon did not launch the manager into gets null here,
             // and there is no point opening the APK for it.
             val managerBinder = VectorServiceClient.requestManagerService() ?: return false
+            managerBinderGranted = true
             VectorServiceClient.openManagerApk()!!.use { pfd ->
                 val managerService = IManagerService.Stub.asInterface(managerBinder)
 

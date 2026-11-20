@@ -57,6 +57,12 @@ object Main {
                 Utils.logI("Manager ($type) loaded into host, skipping standard bootstrap.")
                 return
             }
+            // The daemon registered this process as the manager, so modules loaded here could ask
+            // for the manager binder as well: a failed start leaves the process without them.
+            if (ParasiticManagerHooker.managerBinderGranted) {
+                Utils.logE("Manager ($type) failed to start; no modules are loaded into its process.")
+                return
+            }
         }
 
         // Standard Xposed module loading for third-party apps
