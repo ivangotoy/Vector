@@ -3,10 +3,12 @@ package org.matrix.vector.manager.data.repository
 import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.pm.PackageInstaller
+import android.os.ParcelFileDescriptor
 import java.io.FileInputStream
 import java.io.InputStream
 import java.security.MessageDigest
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,7 +16,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import org.matrix.vector.ipc.IManagerService
 import org.matrix.vector.manager.BuildConfig
 import org.matrix.vector.manager.data.model.ManagerCopy
@@ -67,7 +68,12 @@ sealed interface ManagerInstallStep {
  * signature, and remembers its UID, so an installed manager is granted the same binder as the
  * injected one and needs no further arrangement.
  */
-class ManagerInstaller(private val context: Context, private val daemon: DaemonClient) {
+class ManagerInstaller(
+    private val context: Context,
+    private val daemon: DaemonClient,
+    /** Where the APK fetch runs, so that a wait for it can give up; see [fetchApk]. */
+    private val scope: CoroutineScope,
+) {
 
     private val _state = MutableStateFlow<ManagerInstallStep>(ManagerInstallStep.Idle)
     val state: StateFlow<ManagerInstallStep> = _state.asStateFlow()
@@ -226,14 +232,25 @@ class ManagerInstaller(private val context: Context, private val daemon: DaemonC
      * end and closed by the install itself, and there is no rewinding it.
      */
     private suspend fun canonicalDigest(): ByteArray? {
-        val apk =
-            withTimeoutOrNull(APK_TIMEOUT_MS) { daemon.getManagerApk().getOrNull() } ?: return null
+        val apk = fetchApk() ?: return null
         return try {
             sha256 { FileInputStream(apk.fileDescriptor) }
         } finally {
             runCatching { apk.close() }
         }
     }
+
+    /**
+     * The daemon's manager APK, or null when it refused, failed, or did not answer within
+     * [APK_TIMEOUT_MS].
+     *
+     * The binder call blocks its thread and does not notice cancellation, so it runs on [scope] and
+     * only the wait for it is bounded. A descriptor that arrives after the wait gave up is closed.
+     */
+    private suspend fun fetchApk(): ParcelFileDescriptor? =
+        awaitBounded(APK_TIMEOUT_MS, scope, onLate = { late -> runCatching { late.close() } }) {
+            daemon.getManagerApk().getOrNull()
+        }
 
     /**
      * The SHA-256 of a stream, or null if it could not be read to its end.
@@ -269,8 +286,7 @@ class ManagerInstaller(private val context: Context, private val daemon: DaemonC
         withContext(Dispatchers.IO) {
             _state.value = ManagerInstallStep.Installing
 
-            val apk =
-                withTimeoutOrNull(APK_TIMEOUT_MS) { daemon.getManagerApk().getOrNull() }
+            val apk = fetchApk()
             if (apk == null) {
                 // Either the daemon is gone, or it refused: the APK is missing from the module
                 // directory or its signature is not the one this framework was built to accept.

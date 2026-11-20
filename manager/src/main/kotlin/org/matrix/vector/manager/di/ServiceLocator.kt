@@ -211,7 +211,7 @@ object ServiceLocator {
     val frameworkInstaller: FrameworkInstaller by lazy { FrameworkInstaller(context, http, daemon) }
 
     /** Installs the manager itself as an ordinary app, for anyone who would rather have an icon. */
-    val managerInstaller: ManagerInstaller by lazy { ManagerInstaller(context, daemon) }
+    val managerInstaller: ManagerInstaller by lazy { ManagerInstaller(context, daemon, appScope) }
 
     val backup: BackupRepository by lazy { BackupRepository(context, daemon) }
 
