@@ -44,7 +44,7 @@ public abstract class XC_InitPackageResources extends XCallback implements IXpos
          * @hide
          */
         public InitPackageResourcesParam(CopyOnWriteArraySet<XC_InitPackageResources> callbacks) {
-            super(callbacks.toArray(new XCallback[0]));
+            super(XCallback.byPriority(callbacks.toArray(new XCallback[0])));
         }
 
         /**

@@ -45,7 +45,7 @@ public abstract class XC_LoadPackage extends XCallback implements IXposedHookLoa
          * @hide
          */
         public LoadPackageParam(CopyOnWriteArraySet<XC_LoadPackage> callbacks) {
-            super(callbacks.toArray(new XCallback[0]));
+            super(XCallback.byPriority(callbacks.toArray(new XCallback[0])));
         }
 
         /**
