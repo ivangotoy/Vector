@@ -53,6 +53,11 @@ object VectorService : IVectorDaemon.Stub() {
       appThread: IBinder?,
       activityToken: IBinder?,
   ) {
+    // Only system_server holds this binder; the check is the one attachProcess makes.
+    if (Binder.getCallingUid() != 1000) {
+      Log.w(TAG, "Unauthorized dispatchSystemServerContext call")
+      return
+    }
     appThread?.let { SystemContext.appThread = IApplicationThread.Stub.asInterface(it) }
     SystemContext.token = activityToken
 
@@ -89,7 +94,13 @@ object VectorService : IVectorDaemon.Stub() {
     } else null
   }
 
-  override fun preStartManager() = ManagerService.preStartManager()
+  override fun preStartManager(): Boolean {
+    if (Binder.getCallingUid() != 1000) {
+      Log.w(TAG, "Unauthorized preStartManager call")
+      return false
+    }
+    return ManagerService.preStartManager()
+  }
 
   private fun createReceiver() =
       object : IIntentReceiver.Stub() {
