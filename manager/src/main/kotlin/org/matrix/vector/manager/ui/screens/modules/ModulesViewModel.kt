@@ -387,12 +387,23 @@ class ModulesViewModel(
         }
     }
 
-    /** Backs up only what is selected, using the same file format as a whole-collection backup. */
+    /**
+     * Backs up only what is selected, using the same file format as a whole-collection backup.
+     *
+     * An empty selection is a failure, not a request for everything: the selection is not saved
+     * state, so a process death while the file picker is open brings this back with nothing
+     * selected, and `backupTo` reads an empty set as "every enabled module".
+     */
     fun backupSelectedTo(
         uri: android.net.Uri,
         onResult: (org.matrix.vector.manager.data.repository.BackupRepository.BackupOutcome?) -> Unit,
     ) {
         val targets = _selection.value.map { it.packageName }.toSet()
+        if (targets.isEmpty()) {
+            logW("modules: selection backup with nothing selected, not written")
+            onResult(null)
+            return
+        }
         viewModelScope.launch {
             val outcome = ServiceLocator.backup.backupTo(uri, targets).getOrNull()
             _selection.value = emptySet()
