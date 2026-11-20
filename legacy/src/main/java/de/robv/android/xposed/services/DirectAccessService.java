@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 
 /**
  * @hide
@@ -40,11 +41,13 @@ public final class DirectAccessService extends BaseService {
     @Override
     public byte[] readFile(String filename) throws IOException {
         File file = new File(filename);
-        byte content[] = new byte[(int) file.length()];
+        byte content[] = new byte[arrayLength(file.length(), filename)];
+        int read;
         try (FileInputStream fis = new FileInputStream(file)) {
-            fis.read(content);
+            read = readFully(fis, content);
         }
-        return content;
+        // Shorter than its length said: the file shrank in between.
+        return read == content.length ? content : Arrays.copyOf(content, read);
     }
 
     @Override
@@ -76,18 +79,42 @@ public final class DirectAccessService extends BaseService {
             offset = 0;
         }
 
-        if (length > 0 && (offset + length) > size) {
+        if (length > 0 && ((long) offset + length) > size) {
             throw new IllegalArgumentException("Length " + length + " is out of range for " + filename);
         } else if (length <= 0) {
-            length = (int) (size - offset);
+            length = arrayLength(size - offset, filename);
         }
 
         byte content[] = new byte[length];
+        int read;
         try (FileInputStream fis = new FileInputStream(file)) {
-            fis.skip(offset);
-            fis.read(content);
+            fis.getChannel().position(offset);
+            read = readFully(fis, content);
         }
+        if (read != length) content = Arrays.copyOf(content, read);
         return new FileResult(content, size, time);
+    }
+
+    /** {@code length} as an array size, or an IOException for a file no array can hold. */
+    private static int arrayLength(long length, String filename) throws IOException {
+        if (length > Integer.MAX_VALUE - 8)
+            throw new IOException("File " + filename + " is too large to read into memory (" + length + " bytes)");
+        return (int) length;
+    }
+
+    /**
+     * Reads until {@code buffer} is full or the stream ends: a single read may return fewer bytes.
+     *
+     * @return the number of bytes read.
+     */
+    static int readFully(InputStream in, byte[] buffer) throws IOException {
+        int total = 0;
+        while (total < buffer.length) {
+            int n = in.read(buffer, total, buffer.length - total);
+            if (n < 0) break;
+            total += n;
+        }
+        return total;
     }
 
     /**
