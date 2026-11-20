@@ -239,7 +239,9 @@ void VectorModule::preAppSpecialize(zygisk::AppSpecializeArgs *args) {
     // We identify our manager app by a special UID and
     // grant it internet permissions by adding it to the INET group.
     if (args->uid == kHostPackageUid) {
-        lsplant::JUTFString nice_name_str(env_, args->nice_name);
+        // nice_name is a jstring the zygote may leave null. JUTFString then hands back nullptr,
+        // which the comparison below and every fmt log of it would dereference.
+        lsplant::JUTFString nice_name_str(env_, args->nice_name, "");
         if (nice_name_str.get() == std::string(kManagerPackageName)) {
             LOGI("Manager app detected. Granting internet permissions.");
             is_manager_app_ = true;
@@ -283,7 +285,7 @@ void VectorModule::preAppSpecialize(zygisk::AppSpecializeArgs *args) {
 
     // --- Injection Decision Logic ---
     // Determine if the current process is a valid target for injection.
-    lsplant::JUTFString nice_name_str(env_, args->nice_name);
+    lsplant::JUTFString nice_name_str(env_, args->nice_name, "");
 
     // An app without a data directory cannot be a target.
     if (!args->app_data_dir) {
@@ -323,7 +325,7 @@ void VectorModule::postAppSpecialize(const zygisk::AppSpecializeArgs *args) {
     }
 
     // --- Framework Injection ---
-    lsplant::JUTFString nice_name_str(env_, args->nice_name);
+    lsplant::JUTFString nice_name_str(env_, args->nice_name, "");
     LOGD("Asking the daemon about '{}'.", nice_name_str.get());
 
     auto &ipc_bridge = IPCBridge::GetInstance();
