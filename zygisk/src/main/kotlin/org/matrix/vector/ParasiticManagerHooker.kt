@@ -42,6 +42,8 @@ object ParasiticManagerHooker {
     private val states = ConcurrentHashMap<String, Bundle>()
     private val persistentStates = ConcurrentHashMap<String, PersistableBundle>()
 
+    private val webViewProviderLock = Any()
+
     private fun logD(msg: String) {
         Utils.logD(
             "ParasiticHooker: pkg=${ActivityThread.currentPackageName()}, prc=${ActivityThread.currentProcessName()} - $msg"
@@ -403,7 +405,12 @@ object ParasiticManagerHooker {
             WebViewFactory::class.java,
             "getProvider",
             object : XC_MethodReplacement() {
-                override fun replaceHookedMethod(param: MethodHookParam<*>): Any? {
+                // The original runs under WebViewFactory's own lock; this replacement holds one of
+                // its own, so two threads creating the first WebView make a single provider.
+                override fun replaceHookedMethod(param: MethodHookParam<*>): Any? =
+                    synchronized(webViewProviderLock) { createProvider() }
+
+                private fun createProvider(): Any? {
                     val existing =
                         XposedHelpers.getStaticObjectField(
                             WebViewFactory::class.java,
