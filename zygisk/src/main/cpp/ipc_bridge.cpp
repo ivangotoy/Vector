@@ -566,9 +566,15 @@ void IPCBridge::HookBridge(JNIEnv *env) {
         return;
     }
 
-    // Use the native library's API to get the JNI table override function.
+    // Use the native library's API to get the JNI table override function. GetArt() is null when
+    // libart could not be parsed; this runs in system_server, before any other ART lookup.
+    const auto *art = ElfSymbolCache::GetArt();
+    if (!art) {
+        LOGE("libart not available, bridge hook not installed.");
+        return;
+    }
     auto set_table_override_func =
-        (void (*)(const JNINativeInterface *))ElfSymbolCache::GetArt()->getSymbAddress(
+        (void (*)(const JNINativeInterface *))art->getSymbAddress(
             "_ZN3art9JNIEnvExt16SetTableOverrideEPK18JNINativeInterface");
     if (!set_table_override_func) {
         LOGE("Failed to find ART symbol SetTableOverride!");
