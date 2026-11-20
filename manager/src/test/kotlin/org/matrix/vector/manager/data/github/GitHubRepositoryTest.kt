@@ -69,6 +69,15 @@ class GitHubRepositoryTest {
     }
 
     @Test
+    fun repeatedLoadsDoNotGrowTheArchiveWithoutBound() {
+        val repository = repository()
+        repeat(6) { runBlocking { repository.load(GitHubRepository.Freshness.Revalidate) } }
+
+        val lines = dir.root.resolve("github_history.ndjson").readLines().count { it.isNotBlank() }
+        assertTrue("$lines archive lines for 100 commits", lines <= 200)
+    }
+
+    @Test
     fun theFeedWindowIsTheSameAllDaySoItsUrlCanBeCached() {
         // 2026-03-14T00:00:00Z, then the same day at 23:59:59.
         val midnight = 1_773_446_400L

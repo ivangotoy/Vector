@@ -141,8 +141,12 @@ class GitHubRepository(
                 // fetch could not answer keeps the last answer that was.
                 writeRepo(fresh.repo)
                 // The head window is the mutable part of history — it can be amended or rebased —
-                // so it is appended every time and the duplicates resolved on read.
+                // so it is appended every time and the duplicates resolved on read. Compacted here
+                // too, not only in [backfill]: once the history is complete the backfill returns
+                // before it gets that far, and this append is then the only thing that grows the
+                // file, by a window's worth of duplicates per load.
                 archive.append(fresh.rawCommits)
+                archive.compactIfWasteful()
                 val repo = fresh.repo ?: readRepo() ?: previous?.repo
                 val total = if (fresh.totalCommits > 0) fresh.totalCommits else previous?.totalCommits ?: 0L
                 runCatching {
