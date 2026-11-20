@@ -345,6 +345,14 @@ void VectorModule::postAppSpecialize(const zygisk::AppSpecializeArgs *args) {
     }
 
     auto obfs_map = ipc_bridge.FetchObfuscationMap(env_, binder.get());
+    // FetchObfuscationMap answers an empty map on every error; the entry lookup below would then
+    // throw std::out_of_range and end the process.
+    if (!obfs_map.count("org.matrix.vector.core.")) {
+        LOGE("No usable obfuscation map for '{}'.", nice_name_str.get());
+        close(dex_fd);
+        SetAllowUnload(true);
+        return;
+    }
     ConfigBridge::GetInstance()->obfuscation_map(std::move(obfs_map));
 
     {
@@ -445,6 +453,13 @@ void VectorModule::postServerSpecialize(const zygisk::ServerSpecializeArgs *args
     }
 
     auto obfs_map = ipc_bridge.FetchObfuscationMap(env_, effective_binder);
+    // As above; system_server also looks up the bridge service class (HookBridge).
+    if (!obfs_map.count("org.matrix.vector.core.") || !obfs_map.count("org.matrix.vector.service.")) {
+        LOGE("No usable obfuscation map for system_server.");
+        close(dex_fd);
+        SetAllowUnload(true);
+        return;
+    }
     ConfigBridge::GetInstance()->obfuscation_map(std::move(obfs_map));
 
     {
