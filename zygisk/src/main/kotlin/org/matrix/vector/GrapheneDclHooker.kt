@@ -62,7 +62,8 @@ object GrapheneDclHooker {
                 try {
                     XposedHelpers.findClass(className, this.javaClass.classLoader)
                 } catch (_: XposedHelpers.ClassNotFoundError) {
-                    return // Not GrapheneOS.
+                    // Not GrapheneOS, or a release without this one: the others still apply.
+                    continue
                 }
 
             try {
