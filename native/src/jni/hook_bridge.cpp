@@ -862,7 +862,8 @@ VECTOR_DEF_NATIVE_METHOD(jboolean, HookBridge, makeFieldWritable, jobject field,
 
 /**
  * @brief Creates a snapshot of all registered callbacks for a given method.
- * This is useful for debugging and introspection from the Java side.
+ * This is what the hooked-call dispatch runs on: VectorNativeHooker takes one per call, under the
+ * lock replaceCallback also takes, so that a swap is seen whole or not at all.
 
  * @return An Object[2][] array where index 0 contains modern callbacks and
  *         index 1 contains legacy callbacks.

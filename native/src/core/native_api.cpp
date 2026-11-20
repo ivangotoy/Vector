@@ -62,7 +62,7 @@ using lsplant::operator""_sym;
  * inline static auto my_hook =
  *     "__open"_sym.hook ->* []<auto backup>(const char* path, int flags) {
  *         // 1. Pre-processing (Before original)
- *         LOGD("Opening file: %s", path);
+ *         LOGD("Opening file: {}", path);
  *
  *         // 2. Call Original (The "Backup")
  *         int result = backup(path, flags);

@@ -32,12 +32,14 @@ template <typename T, size_t N>
 }
 
 /**
- * @brief A helper function to get the obfuscated native bridge class signature prefix.
+ * @brief A helper function to get the obfuscated native bridge class name prefix.
  *
  * It reads the obfuscation map to find the correct, potentially obfuscated,
  * package name for the native bridge classes.
  *
- * @return The JNI signature prefix (e.g., "org/matrix/vector/nativebridge/").
+ * @return The dot-separated package prefix the class names are built on (e.g.,
+ *         "org.matrix.vector.nativebridge."), the form the map holds and
+ *         Context::FindClassFromCurrentLoader takes.
  */
 inline std::string GetNativeBridgeSignature() {
     auto *bridge = ConfigBridge::GetInstance();
@@ -50,7 +52,7 @@ inline std::string GetNativeBridgeSignature() {
         }
     }
     // Fallback or default value if not found.
-    return "org/matrix/vector/nativebridge/";
+    return "org.matrix.vector.nativebridge.";
 }
 
 /**
