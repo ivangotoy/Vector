@@ -40,6 +40,8 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+          # Nothing below talks to git over the network; gh is given its token by GH_TOKEN.
+          persist-credentials: false
 
       # Before anything is built, because it needs nothing but Python and a translator's mistake
       # should not wait twenty minutes to surface. Crowdin owns the content of these files, so what
