@@ -54,8 +54,15 @@ class BackupRepository(private val context: Context, private val daemon: DaemonC
      */
     data class BackupOutcome(val modules: Int, val unreadableScopes: List<String>)
 
-    /** Result of a restore, so the UI can say what actually happened rather than "done". */
-    data class RestoreOutcome(val restored: Int, val skipped: Int)
+    /**
+     * Result of a restore, so the UI can say what actually happened rather than "done":
+     * [scopeRefused] are the restored modules whose scope the daemon did not take.
+     */
+    data class RestoreOutcome(
+        val restored: Int,
+        val skipped: Int,
+        val scopeRefused: List<String> = emptyList(),
+    )
 
     /**
      * Writes a backup.
@@ -123,44 +130,40 @@ class BackupRepository(private val context: Context, private val daemon: DaemonC
                         readBackup(input)
                     } ?: error("could not open the chosen file for reading")
 
-                var restored = 0
-                var skipped = 0
-                payload.modules.forEach { module ->
-                    // A refusal is counted and stepped over rather than failing the restore — a
-                    // backup is routinely carried between devices. It is not the missing-module
-                    // case: the daemon accepts an enable for a package this device does not have,
-                    // and drops the row itself on its next cache update.
-                    val enabledOk =
+                applyRestore(
+                    payload.modules,
+                    enable = { packageName, enabled ->
+                        // A refusal is counted and stepped over rather than failing the restore —
+                        // a backup is routinely carried between devices. It is not the
+                        // missing-module case: the daemon accepts an enable for a package this
+                        // device does not have, and drops the row itself on its next cache update.
                         daemon
-                            .setModuleEnabled(module.packageName, module.enabled)
+                            .setModuleEnabled(packageName, enabled)
                             .onFailure { e ->
-                                logW("restore: enabling ${module.packageName} failed, skipping", e)
+                                logW("restore: enabling $packageName failed, skipping", e)
                             }
                             .getOrDefault(false)
-                    if (!enabledOk) {
-                        skipped++
-                        return@forEach
-                    }
-                    if (module.scope.isNotEmpty()) {
+                    },
+                    setScope = { packageName, targets ->
                         val scope =
-                            module.scope.map { target ->
+                            targets.map { target ->
                                 ScopeEntry().apply {
-                                    packageName = target.packageName
+                                    this.packageName = target.packageName
                                     userId = target.userId
                                 }
                             }
-                        val scopeResult = daemon.setModuleScope(module.packageName, scope)
-                        if (!scopeResult.getOrDefault(false)) {
-                            logE(
-                                "restore: scope of ${module.packageName} not applied " +
-                                    "(${scope.size} targets)",
-                                scopeResult.exceptionOrNull(),
-                            )
+                        val scopeResult = daemon.setModuleScope(packageName, scope)
+                        scopeResult.getOrDefault(false).also { ok ->
+                            if (!ok) {
+                                logE(
+                                    "restore: scope of $packageName not applied " +
+                                        "(${scope.size} targets)",
+                                    scopeResult.exceptionOrNull(),
+                                )
+                            }
                         }
-                    }
-                    restored++
-                }
-                RestoreOutcome(restored, skipped)
+                    },
+                )
             }
                 .onFailure { e ->
                     if (e is CancellationException) throw e
@@ -173,6 +176,33 @@ class BackupRepository(private val context: Context, private val daemon: DaemonC
 
     internal companion object {
         const val FORMAT_VERSION = 1
+
+        /**
+         * Applies [modules] one by one: [enable] first, and [setScope] only for a module that
+         * took its enable and has a scope to restore. A module whose enable is refused is skipped;
+         * one whose scope is refused still counts as restored and is named in
+         * [RestoreOutcome.scopeRefused], so the UI does not call that restore complete.
+         */
+        internal suspend fun applyRestore(
+            modules: List<BackupModule>,
+            enable: suspend (String, Boolean) -> Boolean,
+            setScope: suspend (String, List<BackupTarget>) -> Boolean,
+        ): RestoreOutcome {
+            var restored = 0
+            var skipped = 0
+            val scopeRefused = mutableListOf<String>()
+            for (module in modules) {
+                if (!enable(module.packageName, module.enabled)) {
+                    skipped++
+                    continue
+                }
+                if (module.scope.isNotEmpty() && !setScope(module.packageName, module.scope)) {
+                    scopeRefused += module.packageName
+                }
+                restored++
+            }
+            return RestoreOutcome(restored, skipped, scopeRefused)
+        }
 
         /**
          * The most a backup may inflate to. A scope list of hundreds of modules is a few megabytes

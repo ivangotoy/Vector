@@ -4,4 +4,6 @@
 <resources>
     <string name="modules_backup_partial">Backed up %1$d modules, but the scope of %2$s could not be read and was saved empty.</string>
     <string name="scope_restore_empty">This file has no scope entries. The scope was left as it was.</string>
+    <!-- English only (translatable="false"): added by this fork after its translations were made. -->
+    <string name="modules_restore_scope_refused" translatable="false">The scope of %1$s could not be applied.</string>
 </resources>

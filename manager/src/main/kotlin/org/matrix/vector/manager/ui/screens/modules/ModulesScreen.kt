@@ -245,6 +245,7 @@ fun ModulesScreen(
             }
         }
     val restored = stringResource(R.string.modules_restore_done)
+    val restoreScopeRefused = stringResource(R.string.modules_restore_scope_refused)
     val restoreFailed = stringResource(R.string.modules_restore_failed)
 
     val backupLauncher =
@@ -268,12 +269,24 @@ fun ModulesScreen(
             if (uri != null) {
                 viewModel.restoreFrom(uri) { outcome ->
                     scope.launch {
-                        if (outcome != null)
+                        if (outcome == null) snackbars.show(restoreFailed, SnackbarTone.Failure)
+                        else if (outcome.scopeRefused.isEmpty())
                             snackbars.show(
                                 String.format(restored, outcome.restored, outcome.skipped),
                                 SnackbarTone.Success,
                             )
-                        else snackbars.show(restoreFailed, SnackbarTone.Failure)
+                        // Restored, but not as the file says: told in the failure tone, naming the
+                        // modules whose scope the daemon refused.
+                        else
+                            snackbars.show(
+                                String.format(restored, outcome.restored, outcome.skipped) +
+                                    " " +
+                                    String.format(
+                                        restoreScopeRefused,
+                                        outcome.scopeRefused.joinToString(", "),
+                                    ),
+                                SnackbarTone.Failure,
+                            )
                     }
                 }
             }
