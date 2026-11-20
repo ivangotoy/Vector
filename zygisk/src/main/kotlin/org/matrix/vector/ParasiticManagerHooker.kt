@@ -21,6 +21,7 @@ import hidden.HiddenApiBridge
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.IOException
 import java.lang.reflect.Method
 import java.util.concurrent.ConcurrentHashMap
 import org.matrix.vector.ipc.IManagerService
@@ -73,11 +74,20 @@ object ParasiticManagerHooker {
                         runCatching {
                                 FileInputStream(sourcePath).use { input ->
                                     FileOutputStream(dstPath).use { output ->
-                                        input.channel.transferTo(
-                                            0,
-                                            input.channel.size(),
-                                            output.channel,
-                                        )
+                                        // transferTo may move fewer bytes than asked for.
+                                        val size = input.channel.size()
+                                        var copied = 0L
+                                        while (copied < size) {
+                                            val n =
+                                                input.channel.transferTo(
+                                                    copied,
+                                                    size - copied,
+                                                    output.channel,
+                                                )
+                                            if (n <= 0)
+                                                throw IOException("Copied $copied of $size bytes")
+                                            copied += n
+                                        }
                                     }
                                 }
                                 sourcePath = dstPath
