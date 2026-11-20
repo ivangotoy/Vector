@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cstddef>
+#include <mutex>
 #include <string>
 
 #include "common/config.h"
@@ -50,8 +51,18 @@ static TYPE_GET_STRINGS ResXMLParser_getStrings = nullptr;
 static std::string GetXResourcesClassName() {
     // Use a static local variable to ensure this lookup and string manipulation
     // only happens once.
-    static std::string name = []() {
-        auto &obfs_map = ConfigBridge::GetInstance()->obfuscation_map();
+    // Cached only once found: a lookup before the map arrived must not fix an empty answer.
+    static std::mutex lock;
+    static std::string name;
+    std::lock_guard<std::mutex> guard(lock);
+    if (!name.empty()) return name;
+    name = []() {
+        auto *bridge = ConfigBridge::GetInstance();
+        if (!bridge) {
+            LOGE("GetXResourcesClassName: no config bridge.");
+            return std::string();
+        }
+        auto &obfs_map = bridge->obfuscation_map();
         if (obfs_map.empty()) {
             LOGW("GetXResourcesClassName: obfuscation_map is empty.");
         }
@@ -135,6 +146,7 @@ VECTOR_DEF_NATIVE_METHOD(jboolean, ResourcesHook, initXResourcesNative) {
 
     if (auto classXResources_ =
             Context::GetInstance()->FindClassFromCurrentLoader(env, x_resources_class_name)) {
+        if (classXResources) env->DeleteGlobalRef(classXResources);  // a second init
         classXResources = JNI_NewGlobalRef(env, classXResources_);
     } else {
         LOGE("Error while loading XResources class '{}'", x_resources_class_name.c_str());
