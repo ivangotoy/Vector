@@ -96,7 +96,15 @@ class CommitArchive(private val file: File, private val stateFile: File, private
         parsed?.let {
             return it
         }
-        return parse().also { parsed = it }
+        // Parsed under the writers' lock. Outside it, an append landing mid-parse cleared [parsed]
+        // only for this parse to publish the list it had read before that append, and the repair
+        // in [parse] could rewrite the file without the appended lines.
+        synchronized(writeLock) {
+            parsed?.let {
+                return it
+            }
+            return parse().also { parsed = it }
+        }
     }
 
     /**
@@ -105,8 +113,8 @@ class CommitArchive(private val file: File, private val stateFile: File, private
      * One load reads this twice — once to lay out the feed, once to know what the backfill already
      * has — and a backfill reads it again after appending. At three thousand commits that is three
      * passes over megabytes of JSON per visit to the foot of the list, all of it to reproduce a
-     * list that has not changed. Every writer here invalidates it, so there is no way to hold a
-     * stale copy.
+     * list that has not changed. Every writer here invalidates it, and a parse runs under the same
+     * lock as the writers, so there is no way to hold a stale copy.
      */
     @Volatile private var parsed: List<GhCommit>? = null
 
@@ -223,11 +231,11 @@ class CommitArchive(private val file: File, private val stateFile: File, private
     @Volatile private var lineCount = 0
 
     /**
-     * Taken by everything that writes the file.
+     * Taken by everything that writes the file, and by [read] when it has to parse.
      *
-     * Readers do not take it. A reader that catches a half-written final line loses that one
-     * record and says so, which is the behaviour a line format is chosen for; a *writer* that
-     * catches another writer loses records in the middle of the file, permanently.
+     * A *writer* that catches another writer loses records in the middle of the file, permanently.
+     * A parse that overlaps a writer either publishes a list that misses the write or, through its
+     * repair, rewrites the file without it. A reader served the memoised list takes nothing.
      */
     private val writeLock = Any()
 }
