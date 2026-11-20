@@ -56,13 +56,15 @@ import org.matrix.vector.ui.watchSecondaryButton
 class DemoActivity : ComponentActivity() {
 
     /**
-     * Captured before anything is bound, so a scenario can delegate what it does not script.
+     * The real binder, so a scenario can delegate what it does not script and Back can restore it.
      *
-     * Frequently null: the hooker sends the binder when the app's class loader is first asked for,
-     * which happens after this activity is constructed. That is fine — a scenario with no real
-     * daemon behind it simply has empty lists, and the scripted answers are the point.
+     * Often null when this activity is constructed: the hooker sends the binder when the app's
+     * class loader is first asked for, which happens later. So it is also updated by the collector
+     * in [onCreate] whenever a binder that is not the demo's own arrives, including one that
+     * arrives while a scenario is pinned and is replaced at once. Without that, Back restored the
+     * null captured here and left the app reading "not activated" over a working daemon.
      */
-    private val realService = ServiceLocator.service.value
+    private var realService = ServiceLocator.service.value
 
     /**
      * What the demo insists the binder is, and whether it is currently insisting.
@@ -86,7 +88,9 @@ class DemoActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             ServiceLocator.service.collect { current ->
-                if (pinning && current !== pinned) ServiceLocator.bind(pinned)
+                if (current === pinned || current is FakeManagerService) return@collect
+                realService = current
+                if (pinning) ServiceLocator.bind(pinned)
             }
         }
 
