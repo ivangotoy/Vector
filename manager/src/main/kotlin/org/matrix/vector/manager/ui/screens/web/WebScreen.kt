@@ -167,7 +167,10 @@ fun WebScreen(url: String, onNavigateBack: () -> Unit) {
                             title = view.title.orEmpty()
                         }
                     }
-                loadUrl(url)
+                // http(s) only: catalogue links reach this screen, and loadUrl does not go
+                // through shouldOverrideUrlLoading (javascript:, file:, content: would load here).
+                val scheme = Uri.parse(url).scheme?.lowercase()
+                if (scheme == "http" || scheme == "https") loadUrl(url)
             }
         }
 
