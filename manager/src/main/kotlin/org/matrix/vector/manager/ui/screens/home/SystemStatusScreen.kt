@@ -813,10 +813,16 @@ private fun buildSections(
                     InfoItem(
                         str(R.string.info_dex2oat),
                         dex2oatLabel(context, status.dex2oatWrapperState),
+                        // Red only when it costs something, which is the status's own call: the
+                        // property route also suppresses the inlining, so a wrapper that is not OK
+                        // while the property carries the flag raises no issue anywhere else either.
                         health =
-                            if (status.dex2oatWrapperState == IManagerService.DEX2OAT_OK)
-                                Health.Good
-                            else Health.Bad,
+                            when {
+                                status.dex2oatWrapperState == IManagerService.DEX2OAT_OK ->
+                                    Health.Good
+                                HealthIssue.Dex2oatWrapperBroken in status.issues -> Health.Bad
+                                else -> Health.Neutral
+                            },
                         monospace = false,
                     ),
             ),
