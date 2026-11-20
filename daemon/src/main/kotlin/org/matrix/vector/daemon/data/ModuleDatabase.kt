@@ -385,16 +385,15 @@ object ModuleDatabase {
     // nothing, so the module was told its request had been honoured.
     val storedUserId = if (scopePackageName == "system") 0 else userId
     val db = dbHelper.writableDatabase
-    val mid =
-        db.compileStatement("SELECT mid FROM modules WHERE module_pkg_name = ?")
-            .apply { bindString(1, packageName) }
-            .simpleQueryForLong()
-    db.delete(
-        "scope",
-        "mid = ? AND app_pkg_name = ? AND user_id = ?",
-        arrayOf(mid.toString(), scopePackageName, storedUserId.toString()))
-    ConfigCache.requestCacheUpdate()
-    return true
+    val mid = moduleIdOf(db, packageName) ?: return false
+    // True only when a row went: the CLI counts what this removed.
+    val removed =
+        db.delete(
+            "scope",
+            "mid = ? AND app_pkg_name = ? AND user_id = ?",
+            arrayOf(mid.toString(), scopePackageName, storedUserId.toString())) > 0
+    if (removed) ConfigCache.requestCacheUpdate()
+    return removed
   }
 
   fun updateModuleApkPath(packageName: String, apkPath: String?, force: Boolean): Boolean {
