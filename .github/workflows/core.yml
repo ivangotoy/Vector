@@ -112,7 +112,7 @@ jobs:
           path: |
             ~/.ccache
             ${{ github.workspace }}/.ccache
-          key: ${{ runner.os }}-ccache-${{ hashFiles('**/build.gradle') }}-${{ hashFiles('**/CMakeLists.txt') }}
+          key: ${{ runner.os }}-ccache-${{ hashFiles('**/*.gradle.kts') }}-${{ hashFiles('**/CMakeLists.txt') }}
           restore-keys: |
             ${{ runner.os }}-ccache-
 
