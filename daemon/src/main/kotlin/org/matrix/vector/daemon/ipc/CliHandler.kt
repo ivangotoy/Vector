@@ -140,7 +140,8 @@ object CliHandler {
                 })
           }
         }
-        ModuleDatabase.setModuleScope(modulePkg, scope)
+        if (!ModuleDatabase.setModuleScope(modulePkg, scope))
+            throw IllegalStateException("The scope of $modulePkg was not written.")
         "Successfully appended ${apps.size} apps to $modulePkg scope."
       }
       "set" -> {
@@ -158,7 +159,8 @@ object CliHandler {
                 userId = user
               })
         }
-        ModuleDatabase.setModuleScope(modulePkg, scope)
+        if (!ModuleDatabase.setModuleScope(modulePkg, scope))
+            throw IllegalStateException("The scope of $modulePkg was not written.")
         "Successfully overwrote scope for $modulePkg (${apps.size} apps)."
       }
       "rm" -> {
