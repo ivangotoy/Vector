@@ -96,7 +96,8 @@ public:
     [[nodiscard]] bool IsValid() const { return base_ != nullptr; }
 
     /**
-     * @brief Returns the canonical path of the loaded library, as found in /proc/self/maps.
+     * @brief Returns the path of the loaded library, as the linker names it or, for a module the
+     *        linker does not enumerate, as /proc/self/maps does.
      */
     [[nodiscard]] const std::string &GetPath() const { return path_; }
 
@@ -121,9 +122,9 @@ private:
     ElfW(Addr) elfLookup(std::string_view name, uint32_t hash) const;
     // Looks up a symbol offset using the GNU hash table.
     ElfW(Addr) gnuLookup(std::string_view name, uint32_t hash) const;
-    // Looks up a symbol offset via a linear scan of the .symtab section.
+    // Looks up a symbol offset in the .symtab map, which one linear scan builds on first use.
     ElfW(Addr) linearLookup(std::string_view name) const;
-    // Finds all symbol offsets with a given name via a linear scan.
+    // Finds all symbol offsets recorded under a given name in that map.
     std::vector<ElfW(Addr)> linearRangeLookup(std::string_view name) const;
     // Finds the first symbol offset whose name starts with the given prefix.
     ElfW(Addr) prefixLookupFirst(std::string_view prefix) const;

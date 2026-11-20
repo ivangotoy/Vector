@@ -32,8 +32,10 @@ ElfImage::ElfImage(std::string_view lib_name) : path_(lib_name) {
         return;
     }
 
-    // From here on every failure clears base_: IsValid() must not report an image whose symbol
-    // tables were never parsed, or callers get a null address for every symbol with no clue why.
+    // From here on every failure to read the file clears base_: IsValid() must not report an image
+    // whose symbol tables were never parsed, or callers get a null address for every symbol with no
+    // clue why. A .gnu_debugdata that cannot be decompressed is the exception: it costs only the
+    // symbols it carries, and decompressGnuDebugData() logs it.
     int fd = open(path_.c_str(), O_RDONLY | O_CLOEXEC);
     if (fd < 0) {
         PLOGE("Failed to open ELF file: {}", path_.c_str());

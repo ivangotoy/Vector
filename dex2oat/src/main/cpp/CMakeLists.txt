@@ -4,7 +4,7 @@ project(dex2oat)
 add_executable(dex2oat dex2oat.cpp)
 add_library(oat_hook SHARED oat_hook.cpp)
 
-OPTION(LSPLT_BUILD_SHARED OFF)
+option(LSPLT_BUILD_SHARED "Build lsplt as a shared library too" OFF)
 add_subdirectory(${VECTOR_ROOT}/external/lsplt/lsplt/src/main/jni external)
 
 target_include_directories(oat_hook PUBLIC include)

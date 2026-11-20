@@ -18,9 +18,9 @@ add_library(xz_static STATIC ${XZ_SOURCES})
 target_compile_definitions(xz_static PUBLIC XZ_USE_CRC64)
 target_include_directories(xz_static PRIVATE ${XZ_INCLUDES})
 
-option(LSPLANT_BUILD_SHARED OFF)
-option(Plugin.SymbolResolver OFF)
-option(FMT_INSTALL OFF)
+option(LSPLANT_BUILD_SHARED "Build lsplant as a shared library too" OFF)
+option(Plugin.SymbolResolver "Build Dobby's symbol resolver plugin" OFF)
+option(FMT_INSTALL "Generate fmt's install target" OFF)
 
 add_subdirectory(dobby)
 add_subdirectory(fmt)
