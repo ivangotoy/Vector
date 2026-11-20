@@ -129,7 +129,9 @@ class ModuleInstaller(private val context: Context, private val client: OkHttpCl
     ) {
         // noStore: an APK must not push the store catalogue and feeds out of the shared cache.
         val request = Request.Builder().url(url).cacheControl(CacheControl.Builder().noStore().build())
-        client.newCall(request.build()).execute().use { response ->
+        // An https URL must stay https: a redirect to http would hand the APK to the network.
+        val httpsOnly = client.newBuilder().followSslRedirects(false).build()
+        httpsOnly.newCall(request.build()).execute().use { response ->
             if (!response.isSuccessful) throw IOException("HTTP ${response.code} for $url")
             val body = response.body
             val total = body.contentLength().takeIf { it > 0 } ?: declaredSize
