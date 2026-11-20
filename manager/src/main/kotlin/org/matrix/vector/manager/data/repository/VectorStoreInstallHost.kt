@@ -62,10 +62,12 @@ class VectorStoreInstallHost(private val packageName: String) : StoreInstallHost
 
     override fun install(asset: ReleaseAsset, releaseVersion: RepoVersion?) {
         ServiceLocator.appScope.launch {
-            installer.install(packageName, asset)
-            // Record what was installed so a satisfied update stops being offered.
+            val ok = installer.install(packageName, asset)
+            // Record what was installed so a satisfied update stops being offered. Only after a
+            // successful install: a note taken after a failure pairs the release with the old
+            // version, and that pair then reads as satisfied and hides the update.
             val installed = ServiceLocator.store.readInstalled()[packageName]
-            if (releaseVersion != null && installed != null) {
+            if (ok && releaseVersion != null && installed != null) {
                 ServiceLocator.settings.noteStoreInstall(
                     packageName,
                     StoreInstall(releaseVersion, installed),
