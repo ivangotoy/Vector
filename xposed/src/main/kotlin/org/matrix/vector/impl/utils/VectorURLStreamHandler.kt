@@ -18,7 +18,7 @@ import sun.net.www.protocol.jar.Handler
  * Custom URLStreamHandler for loading resources directly from the module's APK. Optimized to handle
  * internal JAR/ZIP entries without extracting them to the filesystem.
  */
-internal class VectorURLStreamHandler(jarFileName: String) : Handler() {
+internal class VectorURLStreamHandler(private val jarFileName: String) : Handler() {
     private val fileUri: String = File(jarFileName).toURI().toString()
     private val jarFile: JarFile = JarFile(jarFileName)
 
@@ -67,30 +67,26 @@ internal class VectorURLStreamHandler(jarFileName: String) : Handler() {
         override fun connect() {
             check(!isClosed) { "JarURLConnection has been closed" }
             if (!connected) {
+                // Each connection reads through a JarFile of its own, closed with its stream: the
+                // handler's is only for the lookup and is closed once the URL is handed out.
                 jarEntry =
-                    this@VectorURLStreamHandler.jarFile.getEntry(entryName)
-                        ?: throw FileNotFoundException(
-                            "URL=$url, zipfile=${this@VectorURLStreamHandler.jarFile.name}"
-                        )
+                    getJarFile().getEntry(entryName)
+                        ?: throw FileNotFoundException("URL=$url, zipfile=$jarFileName")
                 connected = true
             }
         }
 
         @Throws(IOException::class)
         override fun getJarFile(): JarFile {
-            connect()
-            return connectionJarFile
-                ?: JarFile(this@VectorURLStreamHandler.jarFile.name).also { connectionJarFile = it }
+            check(!isClosed) { "JarURLConnection has been closed" }
+            return connectionJarFile ?: JarFile(jarFileName).also { connectionJarFile = it }
         }
 
         @Throws(IOException::class)
         override fun getInputStream(): InputStream {
             connect()
             return jarInput
-                ?: object :
-                        FilterInputStream(
-                            this@VectorURLStreamHandler.jarFile.getInputStream(jarEntry)
-                        ) {
+                ?: object : FilterInputStream(getJarFile().getInputStream(jarEntry)) {
                         @Throws(IOException::class)
                         override fun close() {
                             super.close()

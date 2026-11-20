@@ -32,6 +32,16 @@ class VectorURLStreamHandlerTest {
     private fun read(url: URL) = url.openStream().use { it.readBytes().decodeToString() }
 
     @Test
+    fun aUrlStaysReadableAfterTheLookupClosedItsJarFile() {
+        val jar = jarWith("a.txt" to "first")
+        val handler = VectorURLStreamHandler(jar.path)
+        val url = url(handler, jar, "a.txt")
+        handler.close() // what findResource does once the URL is handed out
+        assertEquals("first", read(url))
+        assertEquals("first", read(url))
+    }
+
+    @Test
     fun resourcesStayReadableAfterAStreamIsClosed() {
         val jar = jarWith("a.txt" to "first", "b.txt" to "second")
         val handler = VectorURLStreamHandler(jar.path)

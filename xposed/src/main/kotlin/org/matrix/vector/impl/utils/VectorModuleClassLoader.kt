@@ -127,7 +127,13 @@ class VectorModuleClassLoader : ByteBufferDexClassLoader {
     override fun findResource(name: String): URL? {
         return try {
             val urlHandler = VectorURLStreamHandler(apkPath)
-            urlHandler.getEntryUrlOrNull(name).also { if (it == null) urlHandler.close() }
+            // The lookup's JarFile is closed either way: a connection opens its own when the URL
+            // is read, so a hit no longer keeps the APK open until the URL is collected.
+            try {
+                urlHandler.getEntryUrlOrNull(name)
+            } finally {
+                urlHandler.close()
+            }
         } catch (e: IOException) {
             null
         }
