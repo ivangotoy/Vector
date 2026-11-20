@@ -84,13 +84,24 @@ suspend fun Context.commitForResult(
                     )
                 if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) {
                     onPrompt()
-                    IntentCompat.getParcelableExtra(intent, Intent.EXTRA_INTENT, Intent::class.java)
-                        ?.let { confirm ->
-                            runCatching {
-                                    startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                                }
-                                .onFailure { logE(promptFailure, it) }
-                        }
+                    val prompted =
+                        IntentCompat.getParcelableExtra(intent, Intent.EXTRA_INTENT, Intent::class.java)
+                            ?.let { confirm ->
+                                runCatching {
+                                        startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                                    }
+                                    .onFailure { logE(promptFailure, it) }
+                                    .isSuccess
+                            } ?: false.also { logE(promptFailure) }
+                    if (prompted) return
+                    // No prompt on screen means no answer will ever come for this session: it ends
+                    // here as a failure instead of leaving the caller waiting for good.
+                    runCatching { unregisterReceiver(this) }
+                    if (continuation.isActive) {
+                        continuation.resumeWith(
+                            Result.success(PackageInstaller.STATUS_FAILURE to promptFailure)
+                        )
+                    }
                     return
                 }
                 runCatching { unregisterReceiver(this) }
