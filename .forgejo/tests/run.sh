@@ -34,6 +34,7 @@ mktree() {
     cat > "$w/gradlew" <<'EOF'
 #!/bin/sh
 ks="$ORG_GRADLE_PROJECT_androidStoreFile"
+echo "$*" > probe/args
 stat -c %a "$ks" > probe/mode
 cmp -s "$ks" "$PROBE_KEY" && echo same > probe/content
 [ "${STUB_GRADLE_FAIL:-0}" = 1 ] && exit 1
@@ -65,6 +66,7 @@ expect "$(grep -cF "$NEW" "$w/$KT")" 1 "release list redirected to the forge fee
 expect "$(grep -cF "$OLD_URL" "$w/$KT")" 0 "GitHub release-list call gone"
 expect "$(diff "$ROOT/$KT" "$w/$KT" | grep -c '^[<>]')" 2 "exactly one line changed"
 expect "$(cd "$w" && git ls-files -v -- "$KT" | cut -c1)" h "GitHubRepository.kt marked assume-unchanged"
+expect "$(cat "$w/probe/args" 2>/dev/null)" "--no-daemon zipAll testDebugUnitTest" "Gradle builds the zips and runs the JVM unit tests"
 
 mktree gradlefail
 if run_build gradlefail https://forge.example STUB_GRADLE_FAIL=1; then bad "failing Gradle not reported"; else ok "failing Gradle fails the build"; fi
