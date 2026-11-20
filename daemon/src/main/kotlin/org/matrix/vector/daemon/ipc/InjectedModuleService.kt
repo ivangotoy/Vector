@@ -2,6 +2,7 @@ package org.matrix.vector.daemon.ipc
 
 import android.os.Binder
 import android.os.Bundle
+import android.os.IBinder
 import android.os.ParcelFileDescriptor
 import android.os.RemoteException
 import android.util.Log
@@ -28,7 +29,17 @@ class InjectedModuleService(private val packageName: String) : IModuleService.St
 
   // Tracks active RemotePreferenceCallbacks linked by config group. Preferences are stored per
   // Android user, so a registration is only interested in updates made by its own user.
-  private data class Subscriber(val userId: Int, val callback: IRemotePreferenceCallback)
+  // [pid] and [seq] bound what one process can hold: see [MAX_SUBSCRIBERS_PER_PROCESS].
+  private class Subscriber(
+      val userId: Int,
+      val callback: IRemotePreferenceCallback,
+      val pid: Int,
+      val seq: Long,
+  ) {
+    var recipient: IBinder.DeathRecipient? = null
+  }
+
+  private val nextSeq = java.util.concurrent.atomic.AtomicLong()
 
   private val callbacks = ConcurrentHashMap<String, MutableSet<Subscriber>>()
 
@@ -51,10 +62,27 @@ class InjectedModuleService(private val packageName: String) : IModuleService.St
 
     if (callback != null) {
       val groupCallbacks = callbacks.getOrPut(group) { ConcurrentHashMap.newKeySet() }
-      val subscriber = Subscriber(userId, callback)
-      groupCallbacks.add(subscriber)
-      runCatching { callback.asBinder().linkToDeath({ groupCallbacks.remove(subscriber) }, 0) }
-          .onFailure { Log.w(TAG, "requestRemotePreferences linkToDeath failed", it) }
+      val subscriber =
+          Subscriber(userId, callback, Binder.getCallingPid(), nextSeq.getAndIncrement())
+      // One process may hold at most MAX_SUBSCRIBERS_PER_PROCESS per group: each hot reload
+      // registers again without an unregister call, so the oldest of that process is dropped
+      // instead of refusing the newest, which is the one in use.
+      synchronized(groupCallbacks) {
+        val mine = groupCallbacks.filter { it.pid == subscriber.pid }
+        val evict = oldestBeyondCap(mine.map { it.seq }, MAX_SUBSCRIBERS_PER_PROCESS - 1).toSet()
+        mine
+            .filter { it.seq in evict }
+            .forEach { old ->
+              groupCallbacks.remove(old)
+              old.recipient?.let { r -> runCatching { old.callback.asBinder().unlinkToDeath(r, 0) } }
+            }
+        // Linked under the lock, so a later eviction always finds the recipient to unlink.
+        val recipient = IBinder.DeathRecipient { groupCallbacks.remove(subscriber) }
+        subscriber.recipient = recipient
+        groupCallbacks.add(subscriber)
+        runCatching { callback.asBinder().linkToDeath(recipient, 0) }
+            .onFailure { Log.w(TAG, "requestRemotePreferences linkToDeath failed", it) }
+      }
     }
     return bundle
   }
@@ -91,4 +119,13 @@ class InjectedModuleService(private val packageName: String) : IModuleService.St
           .onFailure { groupCallbacks.remove(subscriber) }
     }
   }
+}
+
+/** Subscribers one process may hold per preference group before its oldest are dropped. */
+internal const val MAX_SUBSCRIBERS_PER_PROCESS = 16
+
+/** The [keep] newest of [seqs] stay; the rest, oldest first, are returned. */
+internal fun oldestBeyondCap(seqs: List<Long>, keep: Int): List<Long> {
+  val sorted = seqs.sorted()
+  return if (sorted.size <= keep) emptyList() else sorted.take(sorted.size - keep)
 }
