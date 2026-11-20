@@ -447,6 +447,13 @@ object NotificationManager {
                         null,
                         context.getString(R.string.scope_approve),
                         createActionIntent("approve", 4))
+                    // Approving widens what a module hooks: from the lock screen it asks for the
+                    // unlock first (API 31+, where the platform offers it). Deny and block do not.
+                    .apply {
+                      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        setAuthenticationRequired(true)
+                      }
+                    }
                     .build())
             .addAction(
                 Notification.Action.Builder(
