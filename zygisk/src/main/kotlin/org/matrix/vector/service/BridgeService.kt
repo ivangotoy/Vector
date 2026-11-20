@@ -32,12 +32,29 @@ object BridgeService {
 
     @Volatile private var service: IVectorDaemon? = null
 
-    /** Cleans up service references if the remote Vector daemon crashes. */
-    private val serviceRecipient: DeathRecipient = DeathRecipient {
-        Log.e(TAG, "Vector daemin service died.")
-        serviceBinder?.unlinkToDeath(this.serviceRecipient, 0)
-        serviceBinder = null
-        service = null
+    private var serviceRecipient: DaemonDeathRecipient? = null
+
+    /** Guards the three fields above as a unit. */
+    private val lock = Any()
+
+    /**
+     * Cleans up service references if the remote Vector daemon crashes.
+     *
+     * One per daemon binder: a restarted daemon may hand over its new binder before the notice for
+     * the old one is delivered, and that notice must not clear the new binder.
+     */
+    private class DaemonDeathRecipient(private val binder: IBinder) : DeathRecipient {
+        override fun binderDied() {
+            Log.e(TAG, "Vector daemin service died.")
+            synchronized(lock) {
+                runCatching { binder.unlinkToDeath(this, 0) }
+                if (serviceBinder === binder) {
+                    serviceBinder = null
+                    service = null
+                    serviceRecipient = null
+                }
+            }
+        }
     }
 
     /** Returns the active Vector daemin service interface. */
@@ -54,21 +71,26 @@ object BridgeService {
             return
         }
 
-        // Cleanup old death recipient if we are re-initializing
-        val token = Binder.clearCallingIdentity()
-        try {
-            serviceBinder?.unlinkToDeath(serviceRecipient, 0)
-        } finally {
-            Binder.restoreCallingIdentity(token)
+        synchronized(lock) {
+            // Cleanup old death recipient if we are re-initializing
+            val token = Binder.clearCallingIdentity()
+            try {
+                // The old binder may be dead already, its notice still on the way.
+                serviceRecipient?.let { r -> runCatching { serviceBinder?.unlinkToDeath(r, 0) } }
+            } finally {
+                Binder.restoreCallingIdentity(token)
+            }
+
+            // Allow blocking calls since we are often in a synchronous fork path
+            val blockingBinder = Binder_allowBlocking(binder)
+            val recipient = DaemonDeathRecipient(blockingBinder)
+            serviceBinder = blockingBinder
+            service = IVectorDaemon.Stub.asInterface(blockingBinder)
+            serviceRecipient = recipient
+
+            runCatching { blockingBinder.linkToDeath(recipient, 0) }
+                .onFailure { Log.e(TAG, "Failed to link to service death", it) }
         }
-
-        // Allow blocking calls since we are often in a synchronous fork path
-        val blockingBinder = Binder_allowBlocking(binder)
-        serviceBinder = blockingBinder
-        service = IVectorDaemon.Stub.asInterface(blockingBinder)
-
-        runCatching { blockingBinder.linkToDeath(serviceRecipient, 0) }
-            .onFailure { Log.e(TAG, "Failed to link to service death", it) }
 
         // Provide the system context to the service so it can manage system-wide states
         runCatching {
