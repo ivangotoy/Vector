@@ -696,15 +696,17 @@ class ScopeViewModel(
         draftScope.value = draft - cleared
     }
 
-    /** Replace the draft with exactly what the module asked for. */
+    /**
+     * Replace what this screen shows with exactly what the module asked for. Rows the screen cannot
+     * show (another user's, an uninstalled target's) stay as they are, as everywhere else here:
+     * replacing the whole draft made Apply delete them.
+     */
     fun useRecommended() {
         val recommended = _uiState.value.recommended.packages.toSet()
         if (recommended.isEmpty()) return
+        val shown = allApps.value.map { ScopeTarget(it.packageName, it.userId) }.toSet()
         draftScope.value =
-            allApps.value
-                .filter { it.packageName in recommended }
-                .map { ScopeTarget(it.packageName, it.userId) }
-                .toSet()
+            replaceShown(draftScope.value, shown, shown.filter { it.packageName in recommended }.toSet())
     }
 
     fun discard() {
@@ -1058,3 +1060,10 @@ enum class ScopeMessage {
     IncludeNewAppsFailed,
     NothingToOpen,
 }
+
+/** [draft] with the rows in [shown] replaced by [chosen]; rows outside [shown] are kept. */
+internal fun replaceShown(
+    draft: Set<ScopeTarget>,
+    shown: Set<ScopeTarget>,
+    chosen: Set<ScopeTarget>,
+): Set<ScopeTarget> = draft.filterNot { it in shown }.toSet() + chosen
