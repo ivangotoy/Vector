@@ -18,3 +18,29 @@ sealed interface InstallStep {
 
     data class Failed(val packageName: String, val reason: String?) : InstallStep
 }
+
+/** True while a download, a commit or the platform's confirmation is under way. */
+val InstallStep.inProgress: Boolean
+    get() =
+        this is InstallStep.Downloading ||
+            this is InstallStep.Installing ||
+            this is InstallStep.Confirming
+
+/**
+ * This step as the page of [pagePackage] shows it.
+ *
+ * The host reports one install for the whole app, so a step can belong to another module's page:
+ * its progress, failure or result is not this page's, and the page shows its resting state instead.
+ */
+fun InstallStep.forPage(pagePackage: String): InstallStep {
+    val subject =
+        when (this) {
+            InstallStep.Idle -> return this
+            is InstallStep.Downloading -> packageName
+            is InstallStep.Installing -> packageName
+            is InstallStep.Confirming -> packageName
+            is InstallStep.Done -> packageName
+            is InstallStep.Failed -> packageName
+        }
+    return if (subject == pagePackage) this else InstallStep.Idle
+}

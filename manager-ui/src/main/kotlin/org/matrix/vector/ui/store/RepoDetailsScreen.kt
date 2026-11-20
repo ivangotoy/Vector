@@ -194,6 +194,7 @@ fun RepoDetailsScreen(
             // no host, no bar.
             if (host != null) {
                 InstallBar(
+                    packageName = packageName,
                     state = state,
                     install = install,
                     onInstall = { release ->
@@ -300,6 +301,7 @@ fun RepoDetailsScreen(
                             state = state,
                             listState = releasesScroll,
                             canInstall = host != null,
+                            installBusy = install.inProgress,
                             onOpenUrl = onOpenUrl,
                             onInstall = { release ->
                                 val assets = release.apks
@@ -375,6 +377,7 @@ fun RepoDetailsScreen(
  */
 @Composable
 private fun InstallBar(
+    packageName: String,
     state: RepoDetailsState,
     install: InstallStep,
     onInstall: (Release) -> Unit,
@@ -382,6 +385,10 @@ private fun InstallBar(
 ) {
     val context = LocalContext.current
     val newest = state.installable ?: return
+    // The host's one install may be another module's. Its progress and its failure belong on that
+    // module's page; here it only holds the button until it is over, since a second install would
+    // share the one state the host reports.
+    val step = install.forPage(packageName)
 
     Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
         Column(
@@ -390,18 +397,18 @@ private fun InstallBar(
                     .navigationBarsPadding()
                     .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
-            when (install) {
+            when (step) {
                 is InstallStep.Downloading -> {
-                    val done = Formatter.formatShortFileSize(context, install.bytes)
-                    val total = Formatter.formatShortFileSize(context, install.total)
+                    val done = Formatter.formatShortFileSize(context, step.bytes)
+                    val total = Formatter.formatShortFileSize(context, step.total)
                     Text(
                         text = stringResource(UiR.string.store_downloading, done, total),
                         style = MaterialTheme.typography.labelLarge,
                     )
                     Spacer(Modifier.height(8.dp))
-                    if (install.total > 0) {
+                    if (step.total > 0) {
                         LinearProgressIndicator(
-                            progress = { install.bytes.toFloat() / install.total },
+                            progress = { step.bytes.toFloat() / step.total },
                             modifier = Modifier.fillMaxWidth(),
                         )
                     } else {
@@ -413,7 +420,7 @@ private fun InstallBar(
                     Text(
                         text =
                             stringResource(
-                                if (install is InstallStep.Confirming) UiR.string.store_confirming
+                                if (step is InstallStep.Confirming) UiR.string.store_confirming
                                 else UiR.string.store_installing
                             ),
                         style = MaterialTheme.typography.labelLarge,
@@ -426,13 +433,13 @@ private fun InstallBar(
                     // button that appears to do nothing.
                     Text(
                         text =
-                            install.reason?.let {
+                            step.reason?.let {
                                 stringResource(
                                     UiR.string.store_install_failed_reason,
-                                    install.packageName,
+                                    step.packageName,
                                     it,
                                 )
-                            } ?: stringResource(UiR.string.store_install_failed, install.packageName),
+                            } ?: stringResource(UiR.string.store_install_failed, step.packageName),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error,
                     )
@@ -455,6 +462,7 @@ private fun InstallBar(
                             onAcknowledge()
                             onInstall(newest)
                         },
+                        enabled = !install.inProgress,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Icon(
@@ -532,6 +540,8 @@ private fun ReleasesTab(
     listState: LazyListState,
     /** Whether releases may be installed from here — false collapses each card to "Open release". */
     canInstall: Boolean,
+    /** An install is under way, for this module or another; a second one has to wait for it. */
+    installBusy: Boolean,
     onOpenUrl: (String) -> Unit,
     onInstall: (Release) -> Unit,
 ) {
@@ -572,6 +582,7 @@ private fun ReleasesTab(
                 installed =
                     release.version != null && state.installed?.versionCode == release.version?.versionCode,
                 canInstall = canInstall,
+                installBusy = installBusy,
                 notesOpen = expanded == key,
                 onToggleNotes = { expanded = if (expanded == key) null else key },
                 onOpenUrl = onOpenUrl,
@@ -603,6 +614,7 @@ private fun ReleaseCard(
     release: Release,
     installed: Boolean,
     canInstall: Boolean,
+    installBusy: Boolean,
     notesOpen: Boolean,
     onToggleNotes: () -> Unit,
     onOpenUrl: (String) -> Unit,
@@ -741,7 +753,7 @@ private fun ReleaseCard(
                 Spacer(Modifier.width(8.dp))
             }
             if (canInstall && release.apks.isNotEmpty()) {
-                FilledTonalButton(onClick = onInstall) {
+                FilledTonalButton(onClick = onInstall, enabled = !installBusy) {
                     Icon(
                         Icons.Rounded.Download,
                         contentDescription = null,
