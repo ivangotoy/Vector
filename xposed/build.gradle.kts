@@ -37,6 +37,13 @@ android {
             java.directories.addAll(listOf("src/main/kotlin", "libxposed/api/src/main/java"))
         }
     }
+
+    // VectorURLStreamHandler extends the JDK's jar URL handler, which java.base does not export.
+    testOptions {
+        unitTests.all {
+            it.jvmArgs("--add-exports", "java.base/sun.net.www.protocol.jar=ALL-UNNAMED")
+        }
+    }
 }
 
 dependencies {
@@ -46,4 +53,6 @@ dependencies {
     compileOnly(libs.androidx.annotation)
     compileOnly(libs.libxposed.annotation)
     compileOnly(projects.hiddenapi.stubs)
+
+    testImplementation(libs.junit)
 }

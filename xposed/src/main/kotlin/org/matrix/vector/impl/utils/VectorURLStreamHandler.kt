@@ -95,7 +95,8 @@ internal class VectorURLStreamHandler(jarFileName: String) : Handler() {
                         override fun close() {
                             super.close()
                             isClosed = true
-                            this@VectorURLStreamHandler.jarFile.close()
+                            // The handler's JarFile is shared by every URL it hands out, so it is
+                            // not this stream's to close: closing it failed every later lookup.
                             connectionJarFile?.close()
                         }
                     }
