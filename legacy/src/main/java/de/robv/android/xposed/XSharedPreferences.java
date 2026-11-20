@@ -41,11 +41,9 @@ import de.robv.android.xposed.services.FileResult;
  */
 public final class XSharedPreferences implements SharedPreferences {
     private static final String TAG = "XSharedPreferences";
-    private static final HashMap<WatchKey, PrefsData> sWatcherKeyInstances = new HashMap<>();
+    private static final PrefsWatchRegistry<PrefsData> sWatchRegistry = new PrefsWatchRegistry<>();
     private static final Object sContent = new Object();
     private static final Method sReadMapXmlMethod;
-    private static Thread sWatcherDaemon = null;
-    private static WatchService sWatcher;
 
     private final HashMap<OnSharedPreferenceChangeListener, Object> mListeners = new HashMap<>();
     private final File mFile;
@@ -55,6 +53,7 @@ public final class XSharedPreferences implements SharedPreferences {
     private long mLastModified;
     private long mFileSize;
     private WatchKey mWatchKey;
+    private PrefsData mWatchData;
 
     static {
         Method method = null;
@@ -69,18 +68,19 @@ public final class XSharedPreferences implements SharedPreferences {
         sReadMapXmlMethod = method;
     }
 
-    private static void initWatcherDaemon() {
-        sWatcherDaemon = new Thread() {
+    // One thread per service: it ends when its service is closed, and a later registration opens
+    // a new service with a thread of its own.
+    private static void initWatcherDaemon(WatchService watcher) {
+        Thread daemon = new Thread() {
             @Override
             public void run() {
                 if (BuildConfig.DEBUG) Log.d(TAG, "Watcher daemon thread started");
                 while (true) {
                     WatchKey key;
                     try {
-                        key = sWatcher.take();
+                        key = watcher.take();
                     } catch (ClosedWatchServiceException ignored) {
                         if (BuildConfig.DEBUG) Log.d(TAG, "Watcher daemon thread finished");
-                        sWatcher = null;
                         return;
                     } catch (InterruptedException ignored) {
                         return;
@@ -103,8 +103,9 @@ public final class XSharedPreferences implements SharedPreferences {
                         } else if (SELinuxHelper.getAppDataFileService().checkFileExists(pathStr + ".bak")) {
                             continue;
                         }
-                        PrefsData data = sWatcherKeyInstances.get(key);
-                        if (data != null && data.hasChanged()) {
+                        // The key is the directory's, shared by every prefs file in it.
+                        for (PrefsData data : sWatchRegistry.forEvent(key, event.context().toString())) {
+                            if (!data.hasChanged()) continue;
                             // A copy taken under the lock that guards register/unregister: a
                             // listener that unregisters itself (or any other thread) would
                             // otherwise end this thread, and the app, with a
@@ -127,9 +128,9 @@ public final class XSharedPreferences implements SharedPreferences {
                 }
             }
         };
-        sWatcherDaemon.setName(TAG + "-Daemon");
-        sWatcherDaemon.setDaemon(true);
-        sWatcherDaemon.start();
+        daemon.setName(TAG + "-Daemon");
+        daemon.setDaemon(true);
+        daemon.start();
     }
 
     /**
@@ -193,51 +194,35 @@ public final class XSharedPreferences implements SharedPreferences {
         init();
     }
 
-    private void tryRegisterWatcher() {
+    private synchronized void tryRegisterWatcher() {
         if (mWatchKey != null && mWatchKey.isValid()) {
             return;
         }
 
-        synchronized (sWatcherKeyInstances) {
-            Path path = mFile.toPath();
-            try {
-                if (sWatcher == null) {
-                    sWatcher = new File(VectorServiceClient.INSTANCE.getPrefsPath("")).toPath().getFileSystem().newWatchService();
-                    if (BuildConfig.DEBUG) Log.d(TAG, "Created WatchService instance");
-                }
-                mWatchKey = path.getParent().register(sWatcher, StandardWatchEventKinds.ENTRY_CREATE,
-                        StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_DELETE);
-                sWatcherKeyInstances.put(mWatchKey, new PrefsData(this));
-                if (sWatcherDaemon == null || !sWatcherDaemon.isAlive()) {
-                    initWatcherDaemon();
-                }
-                if (BuildConfig.DEBUG)
-                    Log.d(TAG, "tryRegisterWatcher: registered file watcher for " + path);
-            } catch (AccessDeniedException accDeniedEx) {
-                if (BuildConfig.DEBUG) Log.e(TAG, "tryRegisterWatcher: access denied to " + path);
-            } catch (Exception e) {
-                Log.e(TAG, "tryRegisterWatcher: failed to register file watcher", e);
-            }
+        // A key that went invalid (its directory was deleted) still holds this entry.
+        tryUnregisterWatcher();
+        Path path = mFile.toPath();
+        try {
+            PrefsData data = new PrefsData(this);
+            mWatchKey = sWatchRegistry.register(path, data, watcher -> {
+                if (BuildConfig.DEBUG) Log.d(TAG, "Created WatchService instance");
+                initWatcherDaemon(watcher);
+            });
+            mWatchData = data;
+            if (BuildConfig.DEBUG)
+                Log.d(TAG, "tryRegisterWatcher: registered file watcher for " + path);
+        } catch (AccessDeniedException accDeniedEx) {
+            if (BuildConfig.DEBUG) Log.e(TAG, "tryRegisterWatcher: access denied to " + path);
+        } catch (Exception e) {
+            Log.e(TAG, "tryRegisterWatcher: failed to register file watcher", e);
         }
     }
 
-    private void tryUnregisterWatcher() {
-        synchronized (sWatcherKeyInstances) {
-            if (mWatchKey != null) {
-                sWatcherKeyInstances.remove(mWatchKey);
-                mWatchKey.cancel();
-                mWatchKey = null;
-            }
-            boolean atLeastOneValid = false;
-            for (WatchKey key : sWatcherKeyInstances.keySet()) {
-                atLeastOneValid |= key.isValid();
-            }
-            if (!atLeastOneValid) {
-                try {
-                    sWatcher.close();
-                } catch (Exception ignore) {
-                }
-            }
+    private synchronized void tryUnregisterWatcher() {
+        if (mWatchKey != null) {
+            sWatchRegistry.unregister(mWatchKey, mWatchData);
+            mWatchKey = null;
+            mWatchData = null;
         }
     }
 
