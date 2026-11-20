@@ -435,7 +435,7 @@ class GitHubRepository(
             runCatching { get("$API/$REPO", freshness)?.let { json.decodeFromString<GhRepo>(it) } }
                 .getOrNull()
 
-        val total = runCatching { fetchTotalCommits() }.getOrDefault(0L)
+        val total = runCatching { fetchTotalCommits(freshness) }.getOrDefault(0L)
         return Fetched(commits, repo, total)
     }
 
@@ -445,14 +445,13 @@ class GitHubRepository(
      * There is no field for this, but asking for one commit per page makes GitHub report the last
      * page number in its `Link` header, and that number is the count. One cheap request, and it
      * is what makes "you are N commits behind" exact rather than a guess.
+     *
+     * Under the same [freshness] as the commits it accompanies: a [Freshness.Cached] load promises
+     * not to touch the network, and this request used to go out on every one of them.
      */
-    private fun fetchTotalCommits(): Long {
-        val request =
-            Request.Builder()
-                .url("$API/$REPO/commits?per_page=1")
-                .header("Accept", "application/vnd.github+json")
-                .build()
-        client.newCall(request).execute().use { response ->
+    private fun fetchTotalCommits(freshness: Freshness): Long {
+        val call = client.newCall(request("$API/$REPO/commits?per_page=1", freshness))
+        call.execute().use { response ->
             val link = response.header("Link") ?: return 0L
             return LAST_PAGE.find(link)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
         }
@@ -470,34 +469,34 @@ class GitHubRepository(
     private fun get(url: String, freshness: Freshness): String? = getWithStatus(url, freshness).body
 
     private fun getWithStatus(url: String, freshness: Freshness): Answer {
-        val request =
-            Request.Builder()
-                .url(url)
-                .header("Accept", "application/vnd.github+json")
-                .header("X-GitHub-Api-Version", "2022-11-28")
-                .apply {
-                    // OkHttp replays the stored ETag as If-None-Match on its own. A 304 costs
-                    // nothing against GitHub's 60/hour budget, so revalidation stays cheap.
-                    cacheControl(
-                        when (freshness) {
-                            Freshness.Force -> CacheControl.FORCE_NETWORK
-                            Freshness.Cached -> CacheControl.FORCE_CACHE
-                            Freshness.Revalidate ->
-                                CacheControl.Builder()
-                                    .maxAge(REVALIDATE_MINUTES.toInt(), TimeUnit.MINUTES)
-                                    .build()
-                        }
-                    )
-                }
-                .build()
-
-        client.newCall(request).execute().use { response ->
+        client.newCall(request(url, freshness)).execute().use { response ->
             return Answer(
                 response.code,
                 if (response.isSuccessful) response.body.string() else null,
             )
         }
     }
+
+    private fun request(url: String, freshness: Freshness): Request =
+        Request.Builder()
+            .url(url)
+            .header("Accept", "application/vnd.github+json")
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .apply {
+                // OkHttp replays the stored ETag as If-None-Match on its own. A 304 costs
+                // nothing against GitHub's 60/hour budget, so revalidation stays cheap.
+                cacheControl(
+                    when (freshness) {
+                        Freshness.Force -> CacheControl.FORCE_NETWORK
+                        Freshness.Cached -> CacheControl.FORCE_CACHE
+                        Freshness.Revalidate ->
+                            CacheControl.Builder()
+                                .maxAge(REVALIDATE_MINUTES.toInt(), TimeUnit.MINUTES)
+                                .build()
+                    }
+                )
+            }
+            .build()
 
     private fun build(
         raw: List<GhCommit>,

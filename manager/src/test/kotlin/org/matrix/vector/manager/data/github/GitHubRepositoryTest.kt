@@ -1,10 +1,72 @@
 package org.matrix.vector.manager.data.github
 
+import java.util.concurrent.CopyOnWriteArrayList
+import kotlinx.coroutines.runBlocking
+import okhttp3.Interceptor
+import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 
 class GitHubRepositoryTest {
+    @get:Rule val dir = TemporaryFolder()
+
+    /** Every request the repository made. Nothing here reaches a network. */
+    private val asked = CopyOnWriteArrayList<Request>()
+
+    private var head = commits(0 until 100)
+
+    /** Answers the three feed requests from fixtures, and 404 to anything else. */
+    private val client =
+        OkHttpClient.Builder()
+            .addInterceptor(
+                Interceptor { chain ->
+                    val request = chain.request()
+                    asked += request
+                    val url = request.url.toString()
+                    val (code, body, link) =
+                        when {
+                            "/commits?since=" in url -> Triple(200, head, null)
+                            url.endsWith("/commits?per_page=1") ->
+                                Triple(200, "[]", "<$url&page=250>; rel=\"last\"")
+                            else -> Triple(404, "", null)
+                        }
+                    Response.Builder()
+                        .request(request)
+                        .protocol(Protocol.HTTP_1_1)
+                        .code(code)
+                        .message("fixture")
+                        .apply { if (link != null) header("Link", link) }
+                        .body(body.toByteArray().toResponseBody())
+                        .build()
+                }
+            )
+            .build()
+
+    private fun repository() = GitHubRepository(client, dir.root) { 6 }
+
+    private fun commits(range: IntRange): String =
+        range.joinToString(",", "[", "]") { i ->
+            val date = "2026-03-%02dT12:00:00Z".format(1 + i % 28)
+            """{"sha":"%040x","commit":{"message":"change $i","author":{"name":"Example","""
+                .format(i) +
+                """"email":"dev@example.com","date":"$date"}},"author":{"login":"example-dev"}}"""
+        }
+
+    @Test
+    fun aCachedLoadOnlyAsksTheCache() {
+        runBlocking { repository().load(GitHubRepository.Freshness.Cached) }
+
+        assertTrue(asked.isNotEmpty())
+        asked.forEach { assertTrue("${it.url} may use the network", it.cacheControl.onlyIfCached) }
+    }
 
     @Test
     fun theFeedWindowIsTheSameAllDaySoItsUrlCanBeCached() {
