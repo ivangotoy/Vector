@@ -2,7 +2,7 @@ package org.matrix.vector.manager.di
 
 import org.matrix.vector.manager.data.model.ModuleDetectionCache
 import java.io.File
-import org.matrix.vector.ui.store.latestOn
+import org.matrix.vector.ui.store.offeredOn
 import org.matrix.vector.ui.store.StoreChannel
 import org.matrix.vector.ui.store.StoreEntry
 import kotlinx.coroutines.flow.stateIn
@@ -166,7 +166,7 @@ object ServiceLocator {
                         module.name to
                             StoreEntry(
                                 module = module,
-                                latest = module.latestOn(channel),
+                                latest = module.offeredOn(channel),
                                 installed = installed[module.name],
                                 updatesMuted = module.name in muted,
                                 storeInstall = storeInstalls[module.name],

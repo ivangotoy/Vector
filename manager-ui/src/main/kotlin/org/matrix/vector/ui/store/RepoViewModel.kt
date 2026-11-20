@@ -100,6 +100,18 @@ public fun OnlineModule.latestOn(channel: StoreChannel): RepoVersion? {
     return best ?: releasesOn(channel).firstOrNull()?.version
 }
 
+/**
+ * The version the Store can actually install for this module on [channel]: the newest release that
+ * carries an APK. A newer release published without one is not offered, since taking the offer
+ * would install the one before it and the row would keep asking. An entry whose releases are not
+ * known (the site's list carries only the tag) falls back to [latestOn].
+ */
+public fun OnlineModule.offeredOn(channel: StoreChannel): RepoVersion? {
+    val known = releasesOn(channel)
+    if (known.isEmpty()) return latestOn(channel)
+    return known.firstOrNull { it.apks.isNotEmpty() }?.version
+}
+
 class RepoViewModel(
     private val dataSource: StoreDataSource,
     private val settings: StoreSettings,
@@ -223,7 +235,7 @@ class RepoViewModel(
     ): StoreEntry =
         StoreEntry(
             module = module,
-            latest = module.latestOn(channel),
+            latest = module.offeredOn(channel),
             installed = installed[module.name],
             updatesMuted = module.name in muted,
             storeInstall = storeInstalls[module.name],
