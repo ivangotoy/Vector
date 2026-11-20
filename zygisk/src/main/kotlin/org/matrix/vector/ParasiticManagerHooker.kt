@@ -362,27 +362,35 @@ object ParasiticManagerHooker {
                         if (originalContext == null) {
                             // Create a fake original context to satisfy internal package checks
                             info.applicationInfo.packageName = "$managerPackage.origin"
-                            val compatibilityInfo =
-                                HiddenApiBridge.Resources_getCompatibilityInfo(ctx.resources)
-                            val originalPkgInfo =
-                                ActivityThread.currentActivityThread()
-                                    .getPackageInfoNoCheck(info.applicationInfo, compatibilityInfo)
-                            XposedHelpers.setObjectField(
-                                originalPkgInfo,
-                                "mPackageName",
-                                managerPackage,
-                            )
-
-                            val contextImplClass =
-                                XposedHelpers.findClass("android.app.ContextImpl", null)
-                            originalContext =
-                                XposedHelpers.callStaticMethod(
-                                    contextImplClass,
-                                    "createAppContext",
-                                    ActivityThread.currentActivityThread(),
+                            // Restored on every path: the ApplicationInfo is shared with the rest
+                            // of the process.
+                            try {
+                                val compatibilityInfo =
+                                    HiddenApiBridge.Resources_getCompatibilityInfo(ctx.resources)
+                                val originalPkgInfo =
+                                    ActivityThread.currentActivityThread()
+                                        .getPackageInfoNoCheck(
+                                            info.applicationInfo,
+                                            compatibilityInfo,
+                                        )
+                                XposedHelpers.setObjectField(
                                     originalPkgInfo,
-                                ) as Context
-                            info.applicationInfo.packageName = managerPackage
+                                    "mPackageName",
+                                    managerPackage,
+                                )
+
+                                val contextImplClass =
+                                    XposedHelpers.findClass("android.app.ContextImpl", null)
+                                originalContext =
+                                    XposedHelpers.callStaticMethod(
+                                        contextImplClass,
+                                        "createAppContext",
+                                        ActivityThread.currentActivityThread(),
+                                        originalPkgInfo,
+                                    ) as Context
+                            } finally {
+                                info.applicationInfo.packageName = managerPackage
+                            }
                         }
                         param.args[ctxIdx] = originalContext
                     }
