@@ -350,5 +350,54 @@ build_case() {
 build_case ok 0
 build_case failed 1
 
+# --- module-release.yml: the job builds the dispatched commit even when main has moved since.
+# Runs the steps whose run text clones or calls `module-ci.sh build`, against a local bare repo
+# whose main has a commit after BASE_SHA. The fixture's .forgejo/module-ci.sh is a marker script
+# that records which commit's copy ran; the real pipeline is never reachable from here.
+WF="$S/workflow"; mkdir -p "$WF/job" "$WF/forge/owner"
+git init -q --bare "$WF/forge/owner/repo.git"
+git init -q "$WF/seed"
+wf_commit() {
+    mkdir -p "$WF/seed/.forgejo"
+    printf '#!/bin/sh\necho "%s $*" >> "$MARKER_LOG"\n' "$1" > "$WF/seed/.forgejo/module-ci.sh"
+    (cd "$WF/seed" && git add -A && git -c user.name=t -c user.email=t@example.invalid commit -qm "$1")
+}
+wf_commit dispatched; wf_base="$(git -C "$WF/seed" rev-parse HEAD)"
+wf_commit later-on-main
+git -C "$WF/seed" push -q "$WF/forge/owner/repo.git" HEAD:refs/heads/main
+# run blocks without PyYAML (the CI image has none): `run: |` bodies at the step indent
+python3 -I - "$ROOT/.forgejo/workflows/module-release.yml" > "$WF/steps.sh" <<'PY'
+import re, sys
+steps, cur = [], None
+for l in open(sys.argv[1]).read().split("\n"):
+    if re.match(r"^      - name:", l):
+        cur = {"run": [], "in": False}; steps.append(cur); continue
+    if cur is None:
+        continue
+    if re.match(r"^        run: \|\s*$", l):
+        cur["in"] = True; continue
+    m = re.match(r"^        run: (.+)$", l)
+    if m:
+        cur["run"].append(m.group(1)); continue
+    if cur["in"]:
+        if l.startswith("          ") or not l.strip():
+            cur["run"].append(l[10:])
+        else:
+            cur["in"] = False
+for st in steps:
+    text = "\n".join(st["run"])
+    if "git clone" in text or "module-ci.sh build" in text:
+        print("(\n" + text + "\n)")
+PY
+: > "$WF/marker.log"
+if (cd "$WF/job" && env SERVER_URL="file://$WF/forge" REPOSITORY=owner/repo BASE_SHA="$wf_base" \
+        MARKER_LOG="$WF/marker.log" sh "$WF/steps.sh") > "$WF/out.log" 2>&1 \
+    && [ "$(git -C "$WF/job/src" rev-parse HEAD)" = "$wf_base" ] \
+    && [ "$(cat "$WF/marker.log")" = "dispatched build src" ]; then
+    ok "module-release.yml: checkout and build use the dispatched commit after main moved"
+else
+    bad "module-release.yml: dispatched commit not used (ran: $(tr '\n' ';' < "$WF/marker.log") $(tail -n 2 "$WF/out.log" | tr '\n' ' '))"
+fi
+
 echo
 if [ "$fails" = 0 ]; then echo "all checks passed"; else echo "$fails check(s) failed"; exit 1; fi
