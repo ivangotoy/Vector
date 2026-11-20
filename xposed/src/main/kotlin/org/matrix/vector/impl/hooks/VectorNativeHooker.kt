@@ -198,16 +198,21 @@ class VectorNativeHooker<T : Executable>(private val method: T) {
                         "Hook returned null for a primitive return type: $method"
                     )
                 }
-            } else {
-                // Use the JNI bridge for the most reliable type check across ClassLoaders
-                if (
-                    !HookBridge.instanceOf(result, returnType) &&
-                        !isBoxingCompatible(result, returnType)
-                ) {
-                    Utils.logD(
-                        "Hook return type mismatch. Expected ${returnType.name}, got ${result.javaClass.name}"
+            } else if (!returnType.isPrimitive) {
+                // A reference of the wrong type would reach the caller unchecked (ART only casts a
+                // hooked method's reference return to Object), so it is refused here, as the
+                // framework did before the libxposed API 101 migration. JNI's IsInstanceOf is the
+                // check that holds across class loaders.
+                if (!HookBridge.instanceOf(result, returnType)) {
+                    throw ClassCastException(
+                        "Return value's type from hook callback does not match the hooked method: " +
+                            "expected ${returnType.name}, got ${result.javaClass.name}"
                     )
                 }
+            } else if (!isBoxingCompatible(result, returnType)) {
+                Utils.logD(
+                    "Hook return type mismatch. Expected ${returnType.name}, got ${result.javaClass.name}"
+                )
             }
         }
 
