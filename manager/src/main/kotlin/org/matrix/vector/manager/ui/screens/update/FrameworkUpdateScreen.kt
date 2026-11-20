@@ -1,6 +1,7 @@
 package org.matrix.vector.manager.ui.screens.update
 
 import org.matrix.vector.ui.R as UiR
+import org.matrix.vector.ui.SharedAlertDialog
 import org.matrix.vector.manager.data.repository.FrameworkUpdateState
 import org.matrix.vector.manager.data.repository.divergesFrom
 import androidx.compose.foundation.clickable
@@ -309,6 +310,61 @@ private fun UpdateBar(
     onDismiss: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
+    // Reboot, Retry and Roll back each ask once more: a reboot ends every app, a retry flashes
+    // again as root, and a rollback may reset the module database.
+    var pending by remember { mutableStateOf<PendingAction?>(null) }
+    pending?.let { action ->
+        val confirmLabel =
+            when (action) {
+                PendingAction.Reboot -> R.string.update_reboot
+                PendingAction.Retry -> R.string.retry
+                PendingAction.Rollback -> R.string.update_rollback
+            }
+        SharedAlertDialog(
+            onDismissRequest = { pending = null },
+            title = {
+                Text(
+                    stringResource(
+                        when (action) {
+                            PendingAction.Reboot -> R.string.update_reboot
+                            PendingAction.Rollback -> R.string.update_rollback
+                            PendingAction.Retry ->
+                                when (direction) {
+                                    ReleaseDirection.Newer -> R.string.update_install
+                                    ReleaseDirection.Installed -> R.string.update_reinstall
+                                    ReleaseDirection.Older -> R.string.update_rollback
+                                }
+                        }
+                    )
+                )
+            },
+            text =
+                when {
+                    action == PendingAction.Reboot -> {
+                        { Text(stringResource(R.string.update_reboot_why)) }
+                    }
+                    action == PendingAction.Rollback || direction == ReleaseDirection.Older -> {
+                        { Text(stringResource(R.string.update_rollback_warning)) }
+                    }
+                    else -> null
+                },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pending = null
+                        if (action == PendingAction.Reboot) onReboot() else onFlash()
+                    }
+                ) {
+                    Text(stringResource(confirmLabel), color = colors.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pending = null }) {
+                    Text(stringResource(UiR.string.store_cancel))
+                }
+            },
+        )
+    }
     Column(
         modifier =
             Modifier.fillMaxWidth()
@@ -387,7 +443,7 @@ private fun UpdateBar(
                         )
                     }
                     Spacer(Modifier.width(10.dp))
-                    Button(onClick = onReboot) {
+                    Button(onClick = { pending = PendingAction.Reboot }) {
                         Icon(
                             Icons.Rounded.RestartAlt,
                             contentDescription = null,
@@ -410,7 +466,9 @@ private fun UpdateBar(
                         color = colors.error,
                         modifier = Modifier.weight(1f),
                     )
-                    TextButton(onClick = onFlash) { Text(stringResource(R.string.retry)) }
+                    TextButton(onClick = { pending = PendingAction.Retry }) {
+                        Text(stringResource(R.string.retry))
+                    }
                 }
             FlashStep.Idle ->
                 Column {
@@ -465,7 +523,10 @@ private fun UpdateBar(
                         Spacer(Modifier.height(8.dp))
                     }
                     Button(
-                        onClick = onFlash,
+                        onClick = {
+                            if (direction == ReleaseDirection.Older) pending = PendingAction.Rollback
+                            else onFlash()
+                        },
                         enabled = canFlash,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
@@ -579,4 +640,11 @@ private fun VersionsSheet(
         onSelect = { id -> history.firstOrNull { it.tag == id }?.let(onSelect) },
         onDismiss = onDismiss,
     )
+}
+
+/** A bar action that waits for its confirmation dialog. */
+private enum class PendingAction {
+    Reboot,
+    Retry,
+    Rollback,
 }
