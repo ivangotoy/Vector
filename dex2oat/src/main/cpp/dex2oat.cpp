@@ -133,6 +133,11 @@ int main(int argc, char **argv) {
     int stock_fd = recv_fd(sock_fd);
     read_int(sock_fd);  // Sync
     close(sock_fd);
+    if (stock_fd < 0) {
+        // Nothing to run: /proc/self/fd/-1 would only fail later with a linker error.
+        LOGE("no stock dex2oat descriptor from the daemon");
+        return 1;
+    }
 
     // 2. Get liboat_hook.so FD
     sock_fd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -157,11 +162,17 @@ int main(int argc, char **argv) {
             if (fstat(hooker_fd, &st) == 0) {
                 // Tell the kernel to copy the entire file directly to the memfd
                 off_t offset = 0;
-                sendfile(mem_fd, hooker_fd, &offset, st.st_size);
+                ssize_t copied = sendfile(mem_fd, hooker_fd, &offset, st.st_size);
 
-                // Swap the old FD with the new memfd
-                close(hooker_fd);
-                hooker_fd = mem_fd;
+                if (copied == st.st_size) {
+                    // Swap the old FD with the new memfd
+                    close(hooker_fd);
+                    hooker_fd = mem_fd;
+                } else {
+                    // A partial copy is a broken library: keep the original descriptor.
+                    PLOGE("sendfile copied %zd of %lld bytes", copied, (long long)st.st_size);
+                    close(mem_fd);
+                }
             } else {
                 PLOGE("fstat failed");
                 close(mem_fd);

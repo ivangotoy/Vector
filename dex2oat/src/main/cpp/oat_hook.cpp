@@ -21,7 +21,9 @@
 
 namespace {
 const std::string_view kParamToRemove = "--inline-max-code-units=0";
-std::string g_binary_path = getenv("DEX2OAT_CMD");  // The original binary path
+// The wrapper sets DEX2OAT_CMD only when it had an argv[0]; a null would abort the string.
+const char *const g_dex2oat_cmd = getenv("DEX2OAT_CMD");
+std::string g_binary_path = g_dex2oat_cmd ? g_dex2oat_cmd : "";  // The original binary path
 }  // namespace
 
 /**
