@@ -14,8 +14,10 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -94,10 +96,19 @@ private fun HtmlPane(
     // with. The stylesheet below covers our own markup, but a README using <picture> with a
     // dark-mode <source> picks its image from this. The host's context may also be what decides
     // whether the pane may fetch anything at all.
-    val themedContext = remember(dark, contextForWebView) { contextForWebView?.invoke(context, dark) ?: context }
+    //
+    // The host's callbacks are read through rememberUpdatedState rather than used as keys. The
+    // factory below runs once (see StoreHtmlPane), so a key that changed — a host lambda with a new
+    // identity on a recomposition — would build a WebView that is never attached and never
+    // destroyed, and load the document into it. Read this way, the one WebView always calls the
+    // host's current callbacks.
+    val currentContextFor by rememberUpdatedState(contextForWebView)
+    val currentOnOpenUrl by rememberUpdatedState(onOpenUrl)
+    val currentFetchSubresource by rememberUpdatedState(fetchSubresource)
+    val themedContext = remember { currentContextFor?.invoke(context, dark) ?: context }
 
     val webView =
-        remember(themedContext, fetchSubresource) {
+        remember {
             WebView(themedContext).apply {
                 layoutParams =
                     ViewGroup.LayoutParams(
@@ -124,7 +135,7 @@ private fun HtmlPane(
                             if (scheme == "http" || scheme == "https") {
                                 // Only on a tap: a README that navigates by itself (a meta refresh)
                                 // must not open the in-app browser at its author's address.
-                                if (request.hasGesture()) onOpenUrl(target.toString())
+                                if (request.hasGesture()) currentOnOpenUrl(target.toString())
                                 return true
                             }
                             // An in-page anchor resolves against about:blank; a table of contents
@@ -141,7 +152,7 @@ private fun HtmlPane(
                         override fun shouldInterceptRequest(
                             view: WebView,
                             request: WebResourceRequest,
-                        ): WebResourceResponse? = fetchSubresource?.invoke(request)
+                        ): WebResourceResponse? = currentFetchSubresource?.invoke(request)
                     }
             }
         }
