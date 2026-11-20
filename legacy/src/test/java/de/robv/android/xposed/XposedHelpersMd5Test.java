@@ -2,6 +2,7 @@ package de.robv.android.xposed;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,7 +27,11 @@ public class XposedHelpersMd5Test {
     public void md5ClosesTheFileWhenReadingFails() throws IOException {
         File mem = new File("/proc/self/mem");
         File fds = new File("/proc/self/fd");
-        if (!mem.canRead() || fds.list() == null) return; // Linux host only
+        assumeTrue("needs /proc/self/mem and /proc/self/fd (Linux)", mem.canRead() && fds.list() != null);
+        try {
+            XposedHelpers.getMD5Sum(mem.getPath()); // warm-up: class loading may open files of its own
+        } catch (IOException expected) {
+        }
         int before = fds.list().length;
         for (int i = 0; i < 64; i++) {
             try {
