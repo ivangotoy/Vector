@@ -17,11 +17,6 @@ english = {}
 for f in sorted((base/'values').glob('strings*.xml')):
     english[f.name] = units(f)
 
-# scripts that must not appear in a given language's text
-SCRIPT = {
- 'zh-rCN': r'[一-鿿]', 'zh-rTW': r'[一-鿿]',
- 'ru': r'[Ѐ-ӿ]', 'uk': r'[Ѐ-ӿ]',
-}
 CJK = re.compile(r'[一-鿿぀-ヿ]')
 problems = 0
 LOCALE = re.compile(r'^[a-z]{2}(-r[A-Z]{2})?$')
