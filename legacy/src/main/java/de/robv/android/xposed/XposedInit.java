@@ -210,7 +210,15 @@ public final class XposedInit {
             var name = module.packageName;
             var file = module.code;
             loadedModules.put(name, Optional.of(apk)); // temporarily add it for XSharedPreference
-            if (!loadModule(name, apk, file)) {
+            boolean loaded;
+            try {
+                loaded = loadModule(name, apk, file);
+            } catch (Throwable t) {
+                // One broken module (a corrupt dex, a bad native_init) must not stop the rest.
+                Log.e(TAG, "Failed to load legacy module " + name, t);
+                loaded = false;
+            }
+            if (!loaded) {
                 loadedModules.remove(name);
             }
         });
