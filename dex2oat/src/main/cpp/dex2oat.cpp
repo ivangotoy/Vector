@@ -46,14 +46,35 @@ ssize_t xrecvmsg(int sockfd, struct msghdr *msg, int flags) {
 }
 
 /**
+ * Closes every descriptor an SCM_RIGHTS message delivered, for a message that is being refused.
+ */
+void close_received_fds(struct msghdr *msg) {
+    for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(msg); cmsg != nullptr;
+         cmsg = CMSG_NXTHDR(msg, cmsg)) {
+        if (cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS) continue;
+        size_t count = (cmsg->cmsg_len - CMSG_LEN(0)) / sizeof(int);
+        for (size_t i = 0; i < count; ++i) {
+            int fd;
+            std::memcpy(&fd, CMSG_DATA(cmsg) + i * sizeof(int), sizeof(int));
+            close(fd);
+        }
+    }
+}
+
+/**
  * Receives file descriptors passed over a Unix domain socket using SCM_RIGHTS.
+ *
+ * The data that travels with the descriptors is the daemon's acknowledgement, and it gets a buffer
+ * of its own: it used to land in `cnt`, so a peer could raise the count the check below compares
+ * against simply by sending a larger number along with more descriptors.
  *
  * @return Pointer to the FD data on success, nullptr on failure.
  */
 void *recv_fds(int sockfd, char *cmsgbuf, size_t bufsz, int cnt) {
+    int payload = 0;
     struct iovec iov = {
-        .iov_base = &cnt,
-        .iov_len = sizeof(cnt),
+        .iov_base = &payload,
+        .iov_len = sizeof(payload),
     };
     struct msghdr msg = {.msg_name = nullptr,
                          .msg_namelen = 0,
@@ -67,9 +88,11 @@ void *recv_fds(int sockfd, char *cmsgbuf, size_t bufsz, int cnt) {
 
     struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
 
-    if (msg.msg_controllen != bufsz || cmsg == nullptr ||
+    if ((msg.msg_flags & MSG_CTRUNC) != 0 || msg.msg_controllen != bufsz || cmsg == nullptr ||
         cmsg->cmsg_len != CMSG_LEN(sizeof(int) * cnt) || cmsg->cmsg_level != SOL_SOCKET ||
         cmsg->cmsg_type != SCM_RIGHTS) {
+        // Whatever did arrive is open in this process and would be inherited by dex2oat.
+        close_received_fds(&msg);
         return nullptr;
     }
 
