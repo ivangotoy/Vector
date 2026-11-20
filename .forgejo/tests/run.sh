@@ -292,5 +292,48 @@ else
 fi
 
 
+# --- build step (module-ci.sh build): whatever the build user started is killed after the build,
+# failed or not. setpriv and chown are stubs: the stub records a kill and never runs it (here the
+# test user may well be the build uid, and `kill -9 -1` would end this session).
+BW="$S/build-mode"; mkdir -p "$BW/bin"
+cat > "$BW/bin/setpriv" <<'EOF'
+#!/bin/sh
+case " $* " in *kill*) echo "kill-requested $*" >> "$SETPRIV_LOG"; exit 0 ;; esac
+while [ $# -gt 0 ]; do case "$1" in --*) shift ;; *) break ;; esac; done
+exec "$@"
+EOF
+printf '#!/bin/sh\nexit 0\n' > "$BW/bin/chown"
+chmod 755 "$BW/bin/setpriv" "$BW/bin/chown"
+build_case() {
+    local name="$1" rc_want="$2" w="$BW/$1"
+    mkdir -p "$w/.forgejo"
+    cp "$ROOT/.forgejo/module-ci.sh" "$w/.forgejo/"
+    # build() sees only the curated build environment, so each case gets its own conf
+    if [ "$name" = ok ]; then
+        printf 'build() { echo zip > "$OUT/module.zip"; }\n' > "$w/.forgejo/module-ci.conf"
+    else
+        printf 'build() { echo "stub build failed" >&2; return 1; }\n' > "$w/.forgejo/module-ci.conf"
+    fi
+    (cd "$w" && git init -q && git add -A && git -c user.name=t -c user.email=t@example.invalid commit -qm t)
+    : > "$w/setpriv.log"
+    if [ "$(PATH="$BW/bin:$PATH" command -v setpriv)" != "$BW/bin/setpriv" ]; then
+        bad "build step $name: setpriv stub not first on PATH, not run"; return
+    fi
+    local rc=0
+    (cd "$w" && env PATH="$BW/bin:$PATH" SETPRIV_LOG="$w/setpriv.log" SERVER_URL=https://forge.example \
+        REPOSITORY=owner/repo BASE_SHA="$(git rev-parse HEAD)" bash .forgejo/module-ci.sh build "$w") > "$w/out.log" 2>&1 || rc=$?
+    local result=missing
+    if [ "$name" = ok ]; then [ -f "$w/.ci-out/module.zip" ] && result=zip
+    else grep -q "stub build failed" "$w/out.log" && result=stub-failure; fi
+    if [ "$([ "$rc" = 0 ] && echo 0 || echo 1)" = "$rc_want" ] && [ "$result" != missing ] \
+        && ! grep -q "unbound variable" "$w/out.log" && grep -q 'kill-requested .*--reuid=1000 .*kill -9 -1' "$w/setpriv.log"; then
+        ok "build step $name: exit as expected, build user's processes killed"
+    else
+        bad "build step $name (rc=$rc, $result, kills: $(grep -c kill-requested "$w/setpriv.log")): $(tail -n 2 "$w/out.log" | tr '\n' ' ')"
+    fi
+}
+build_case ok 0
+build_case failed 1
+
 echo
 if [ "$fails" = 0 ]; then echo "all checks passed"; else echo "$fails check(s) failed"; exit 1; fi
