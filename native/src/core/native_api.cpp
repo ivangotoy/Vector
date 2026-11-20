@@ -8,6 +8,7 @@
 #include <memory>
 #include <mutex>
 
+#include "common/library_name.h"
 #include "common/logging.h"
 #include "elf/elf_image.h"
 #include "elf/symbol_cache.h"
@@ -160,14 +161,6 @@ void RegisterNativeLib(const std::string &library_name) {
     LOGD("Native module library '{}' has been registered.", library_name.c_str());
 }
 
-bool HasEnding(std::string_view fullString, std::string_view ending) {
-    if (fullString.length() >= ending.length()) {
-        return (fullString.compare(fullString.length() - ending.length(), std::string_view::npos,
-                                   ending) == 0);
-    }
-    return false;
-}
-
 inline static auto do_dlopen_hook =
     "__dl__Z9do_dlopenPKciPK17android_dlextinfoPKv"_sym.hook->*
     []<lsplant::Backup auto backup>(const char *name, int flags, const void *extinfo,
@@ -185,7 +178,7 @@ inline static auto do_dlopen_hook =
     {
         std::lock_guard<std::mutex> lock(g_module_registry_mutex);
         for (std::string_view module_lib : g_module_native_libs) {
-            if (HasEnding(lib_name, module_lib)) {
+            if (IsModuleLibrary(lib_name, module_lib)) {
                 LOGI("Detected registered native module being loaded: '{}'", lib_name.c_str());
                 void *init_sym = dlsym(handle, "native_init");
                 if (init_sym == nullptr) {
