@@ -616,7 +616,10 @@ object FileSystem {
             os.setComment(comment)
             os.setLevel(java.util.zip.Deflater.BEST_COMPRESSION)
 
+            // The crash directories belong to the apps that write them: a link planted there must
+            // not have root copy its target into a report the user exports.
             fun addFile(name: String, file: File) {
+              if (Files.isSymbolicLink(file.toPath())) return
               if (!file.exists() || !file.isFile) return
               runCatching {
                     os.putNextEntry(ZipEntry(name))
@@ -627,8 +630,10 @@ object FileSystem {
             }
 
             fun addDir(basePath: String, dir: File) {
+              if (Files.isSymbolicLink(dir.toPath())) return
               if (!dir.exists() || !dir.isDirectory) return
               dir.walkTopDown()
+                  .onEnter { !Files.isSymbolicLink(it.toPath()) }
                   .filter { it.isFile }
                   .forEach { file ->
                     val relativePath = dir.toPath().relativize(file.toPath()).toString()
