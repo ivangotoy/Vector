@@ -99,6 +99,7 @@ run_rf() {
     SERVER_URL=https://forge.example REPOSITORY=owner/repo TAG=v9.9-3200-0123abcd-owner-repo-ci7
     VERSION="$2" VC=3200 SRC_SHA=0123abcd0123abcd0123abcd0123abcd0123abcd
     ZIP_SHA="${RF_ZIP_SHA-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}"
+    VERSION_CODE_OFFSET="${RF_OFFSET:-0}"  # load_conf default
     BODY="Built by module-release #7" ZIP_SIZE=4242 ZIP_URL="https://forge.example/owner/repo/releases/download/$TAG/Vector-$TAG.zip"
     release_files
     printf "%s" "$RELEASE_FILES"' _ "$ROOT/.forgejo/module-ci.conf" "${2:-v9.9 (3200-0123abcd-owner-repo)-ci7}" 2>"$1/err.log")
@@ -175,6 +176,16 @@ if RF_ZIP_SHA="not-a-sha" run_rf "$S/rf-badsha" >/dev/null \
     ok "release_files: a ZIP_SHA that is not a sha256 is left out (logged)"
 else
     bad "release_files: bad ZIP_SHA not handled"
+fi
+# VERSION_CODE_OFFSET raises the published versionCode (VC) only; the manager compares the asset
+# name's number with the framework's compiled versionCode, which never includes the offset
+mkdir -p "$S/rf-offset/.forgejo"
+if RF_OFFSET=1000 run_rf "$S/rf-offset" >/dev/null \
+    && python3 -I -c 'import json,sys; r=json.load(open(sys.argv[1]))[0]
+sys.exit(not (r["assets"][0]["name"] == "Vector-v9.9-2200-Release.zip" and r["id"] == 3200))' "$S/rf-offset/.forgejo/releases.json"; then
+    ok "release_files: asset name carries the versionCode without VERSION_CODE_OFFSET"
+else
+    bad "release_files: asset name with VERSION_CODE_OFFSET=1000 ($(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))[0]["assets"][0]["name"])' "$S/rf-offset/.forgejo/releases.json" 2>&1))"
 fi
 grep -q "starting a new feed" "$S/rf-malformed feed/err.log" && ok "release_files: unreadable feed logged" \
     || bad "release_files: unreadable feed not logged"
