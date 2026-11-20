@@ -61,15 +61,25 @@ internal fun localHopsRefused(client: OkHttpClient): OkHttpClient =
         }
         .build()
 
+/** An IPv4 address in the one form every resolver reads the same way. */
+private val DOTTED_QUAD = Regex("""(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}""")
+
 /**
  * Whether [host] (as OkHttp normalised it) is an address on this device or its local network, which
  * a README has no business making the manager request. Covers literal addresses and `localhost`
  * only: a public name that resolves to a private address is not caught here.
  */
-private fun isLocalAddress(host: String): Boolean {
-    val h = host.lowercase()
+internal fun isLocalAddress(host: String): Boolean {
+    val h = host.lowercase().removeSuffix(".") // a fully qualified "127.0.0.1." is the same host
     if (h == "localhost" || h.endsWith(".localhost")) return true
-    if (!h.contains(':') && !h.all { it.isDigit() || it == '.' }) return false
+    if (!h.contains(':')) {
+        // A host name ends in a label that starts with a letter. Anything else is an address
+        // literal, and resolvers read more forms than the dotted quad (hex, octal, a single number,
+        // fewer than four parts): those are refused rather than interpreted differently here.
+        val last = h.substringAfterLast('.')
+        if (last.isEmpty() || (!last[0].isDigit() && !last.startsWith("0x"))) return false
+        if (!DOTTED_QUAD.matches(h)) return true
+    }
     val address = runCatching { java.net.InetAddress.getByName(h) }.getOrNull() ?: return true
     return address.isLoopbackAddress || address.isSiteLocalAddress || address.isLinkLocalAddress ||
         address.isAnyLocalAddress ||
