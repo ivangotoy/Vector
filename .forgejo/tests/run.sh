@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
-# Offline checks of this fork's release config (.forgejo/module-ci.conf), made-up values only:
+# Offline checks of this fork's release pipeline and module scripts, made-up values only:
 #   bash .forgejo/tests/run.sh
-# build() runs through `module-ci.sh build-user` as the build step runs it, with a stub gradlew
-# and a git whose fetch is a no-op; release_files() runs as the release step calls it.
+# - module-ci.conf: build() through `module-ci.sh build-user` as the build step runs it (stub gradlew,
+#   a git whose fetch is a no-op); release_files() as the release step calls it
+# - module-ci.sh: the build step's process cleanup (stub setpriv/chown) and the release cleanup
+#   (functions cut from the script, stub curl)
+# - zygisk/module: daemon/cli debug gating, uninstall.sh under a fake root; core.yml key umask
+# Needs bash, git, python3 and coreutils; no network.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -243,23 +247,22 @@ grep -qF 'basePath.resolve("misc_path")' "$ROOT/daemon/src/main/kotlin/org/matri
 # The publish PATCH may be applied by the forge while its reply is lost; deleting on "PUBLISHED != 1"
 # alone then removes a published release. Real: log/die/jget/api/cleanup and the publish statements
 # (REQ= .. PUBLISHED=1) cut from .forgejo/module-ci.sh; stubbed: curl (fake forge at https://forge.invalid).
-if command -v bash >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
-    RW="$S"/release-cleanup; mkdir -p "$RW/bin"
-    {
-        echo 'set -euo pipefail'
-        echo 'API=https://forge.invalid/api/v1/repos/example/mod RELEASE_ID=7 PUBLISHED=0 SRC_SHA=0123456789abcdef0123456789abcdef01234567'
-        echo 'DRAFT_REQUESTED=0 TAG=v9.9-ci7 REQ={}'
-        echo 'AUTH_DIR=$(mktemp -d) AUTH_H=$AUTH_DIR/header; : > "$AUTH_H"'
-        sed -n '/^log() {/p; /^die() {/p; /^jget() {/,/^print(d)/p; /^api() {/,/^}/p; /^cleanup() {/,/^}/p' "$ROOT/.forgejo/module-ci.sh"
-        echo 'trap cleanup EXIT'
-        echo 'if [ "$1" = create ]; then RELEASE_ID=""'
-        sed -n '/^DRAFT_REQUESTED=1$/,/^RELEASE_ID="\$(api POST \/releases /p' "$ROOT/.forgejo/module-ci.sh"
-        echo 'elif [ "$1" = publish ]; then'
-        sed -n '/^REQ="\$(python3 -I -c .import json,sys;print(json.dumps({"draft":False/,/^PUBLISHED=1$/p' "$ROOT/.forgejo/module-ci.sh"
-        echo 'else die "upload failed"; fi'
-    } > "$RW/rel.sh"
-    # fake curl: logs "METHOD URL"; PATCH exits $PATCH_RC; GET of the release answers draft=$DRAFT or fails (DRAFT=fail)
-    cat > "$RW/bin/curl" <<EOF
+RW="$S"/release-cleanup; mkdir -p "$RW/bin"
+{
+    echo 'set -euo pipefail'
+    echo 'API=https://forge.invalid/api/v1/repos/example/mod RELEASE_ID=7 PUBLISHED=0 SRC_SHA=0123456789abcdef0123456789abcdef01234567'
+    echo 'DRAFT_REQUESTED=0 TAG=v9.9-ci7 REQ={}'
+    echo 'AUTH_DIR=$(mktemp -d) AUTH_H=$AUTH_DIR/header; : > "$AUTH_H"'
+    sed -n '/^log() {/p; /^die() {/p; /^jget() {/,/^print(d)/p; /^api() {/,/^}/p; /^cleanup() {/,/^}/p' "$ROOT/.forgejo/module-ci.sh"
+    echo 'trap cleanup EXIT'
+    echo 'if [ "$1" = create ]; then RELEASE_ID=""'
+    sed -n '/^DRAFT_REQUESTED=1$/,/^RELEASE_ID="\$(api POST \/releases /p' "$ROOT/.forgejo/module-ci.sh"
+    echo 'elif [ "$1" = publish ]; then'
+    sed -n '/^REQ="\$(python3 -I -c .import json,sys;print(json.dumps({"draft":False/,/^PUBLISHED=1$/p' "$ROOT/.forgejo/module-ci.sh"
+    echo 'else die "upload failed"; fi'
+} > "$RW/rel.sh"
+# fake curl: logs "METHOD URL"; PATCH exits $PATCH_RC; GET of the release answers draft=$DRAFT or fails (DRAFT=fail)
+cat > "$RW/bin/curl" <<EOF
 #!/bin/sh
 m=GET; p=; for a in "\$@"; do [ "\$p" = -X ] && m=\$a; p=\$a; u=\$a; done
 echo "\$m \$u" >> "$RW/calls"
@@ -269,41 +272,38 @@ case "\$m" in
   GET) [ "\$DRAFT" = fail ] && exit 22; printf '{"id": 7, "draft": %s}' "\$DRAFT" ;;
 esac
 EOF
-    chmod 755 "$RW/bin/curl"
-    rel() {
-        rel_mode=$1; shift; : > "$RW/calls"; local r=0
-        env PATH="$RW/bin:$PATH" TMPDIR="$RW" "$@" bash "$RW/rel.sh" "$rel_mode" > "$RW/err" 2>&1 || r=$?
-        cat "$RW/err" >> "$RW/err.all"; return "$r"
-    }
-    if ! grep -q '^PUBLISHED=1$' "$RW/rel.sh" || ! grep -q '^cleanup() {' "$RW/rel.sh" || ! grep -q '^api() {' "$RW/rel.sh"; then
-        bad "release cleanup: cleanup()/api()/publish statements not found in module-ci.sh"
-    else
-        rel publish PATCH_RC=28 DRAFT=false && rc=0 || rc=$?
-        if [ "$rc" -ne 0 ] && grep -q '^PATCH ' "$RW/calls" && ! grep -q '^DELETE ' "$RW/calls"; then
-            ok "release cleanup: failed PATCH, forge reports published: release kept, job fails"
-        else bad "release cleanup: failed PATCH, published (rc=$rc): $(tr '\n' ';' < "$RW/calls")"; fi
-        rel upload DRAFT=true && rc=0 || rc=$?
-        if [ "$rc" -ne 0 ] && grep -qx 'DELETE https://forge.invalid/api/v1/repos/example/mod/releases/7' "$RW/calls"; then
-            ok "release cleanup: failure before publish deletes the draft"
-        else bad "release cleanup: draft not deleted (rc=$rc): $(tr '\n' ';' < "$RW/calls")"; fi
-        rel publish PATCH_RC=28 DRAFT=fail && rc=0 || rc=$?
-        if [ "$rc" -ne 0 ] && ! grep -q '^DELETE ' "$RW/calls" && grep -q 'release 7' "$RW/err"; then
-            ok "release cleanup: unreadable state: nothing deleted, release id logged"
-        else bad "release cleanup: unreadable state (rc=$rc): $(tr '\n' ';' < "$RW/calls")"; fi
-        rel publish DRAFT=false && rc=0 || rc=$?
-        if [ "$rc" -eq 0 ] && ! grep -q '^DELETE ' "$RW/calls"; then
-            ok "release cleanup: good publish deletes nothing, exit 0"
-        else bad "release cleanup: good publish (rc=$rc): $(tr '\n' ';' < "$RW/calls")"; fi
-        rel create POST_RC=28 DRAFT=true && rc=0 || rc=$?
-        if [ "$rc" -ne 0 ] && grep -q '^POST ' "$RW/calls" && ! grep -q '^DELETE ' "$RW/calls" \
-            && grep -q 'the draft request for v9.9-ci7 failed or its reply was lost' "$RW/err"; then
-            ok "release cleanup: failed or unanswered draft request: tag logged for a check by hand"
-        else bad "release cleanup: lost draft reply (rc=$rc): $(tr '\n' ';' < "$RW/err")"; fi
-        grep -q 'unbound variable' "$RW/err.all" && bad "release cleanup: unbound variable in cleanup()" \
-            || ok "release cleanup: no unbound variable"
-    fi
+chmod 755 "$RW/bin/curl"
+rel() {
+    rel_mode=$1; shift; : > "$RW/calls"; local r=0
+    env PATH="$RW/bin:$PATH" TMPDIR="$RW" "$@" bash "$RW/rel.sh" "$rel_mode" > "$RW/err" 2>&1 || r=$?
+    cat "$RW/err" >> "$RW/err.all"; return "$r"
+}
+if ! grep -q '^PUBLISHED=1$' "$RW/rel.sh" || ! grep -q '^cleanup() {' "$RW/rel.sh" || ! grep -q '^api() {' "$RW/rel.sh"; then
+    bad "release cleanup: cleanup()/api()/publish statements not found in module-ci.sh"
 else
-    printf "skip %s\\n" "release cleanup (bash/python3 missing)"
+    rel publish PATCH_RC=28 DRAFT=false && rc=0 || rc=$?
+    if [ "$rc" -ne 0 ] && grep -q '^PATCH ' "$RW/calls" && ! grep -q '^DELETE ' "$RW/calls"; then
+        ok "release cleanup: failed PATCH, forge reports published: release kept, job fails"
+    else bad "release cleanup: failed PATCH, published (rc=$rc): $(tr '\n' ';' < "$RW/calls")"; fi
+    rel upload DRAFT=true && rc=0 || rc=$?
+    if [ "$rc" -ne 0 ] && grep -qx 'DELETE https://forge.invalid/api/v1/repos/example/mod/releases/7' "$RW/calls"; then
+        ok "release cleanup: failure before publish deletes the draft"
+    else bad "release cleanup: draft not deleted (rc=$rc): $(tr '\n' ';' < "$RW/calls")"; fi
+    rel publish PATCH_RC=28 DRAFT=fail && rc=0 || rc=$?
+    if [ "$rc" -ne 0 ] && ! grep -q '^DELETE ' "$RW/calls" && grep -q 'release 7' "$RW/err"; then
+        ok "release cleanup: unreadable state: nothing deleted, release id logged"
+    else bad "release cleanup: unreadable state (rc=$rc): $(tr '\n' ';' < "$RW/calls")"; fi
+    rel publish DRAFT=false && rc=0 || rc=$?
+    if [ "$rc" -eq 0 ] && ! grep -q '^DELETE ' "$RW/calls"; then
+        ok "release cleanup: good publish deletes nothing, exit 0"
+    else bad "release cleanup: good publish (rc=$rc): $(tr '\n' ';' < "$RW/calls")"; fi
+    rel create POST_RC=28 DRAFT=true && rc=0 || rc=$?
+    if [ "$rc" -ne 0 ] && grep -q '^POST ' "$RW/calls" && ! grep -q '^DELETE ' "$RW/calls" \
+        && grep -q 'the draft request for v9.9-ci7 failed or its reply was lost' "$RW/err"; then
+        ok "release cleanup: failed or unanswered draft request: tag logged for a check by hand"
+    else bad "release cleanup: lost draft reply (rc=$rc): $(tr '\n' ';' < "$RW/err")"; fi
+    grep -q 'unbound variable' "$RW/err.all" && bad "release cleanup: unbound variable in cleanup()" \
+        || ok "release cleanup: no unbound variable"
 fi
 
 
