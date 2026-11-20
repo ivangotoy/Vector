@@ -69,9 +69,10 @@ template <typename... T>
 inline void LogToAndroid(int prio, const char *tag, fmt::format_string<T...> fmt, T &&...args) {
     // Using a stack-allocated buffer for performance.
     std::array<char, 1024> buf{};
-    // format_to_n is safe against buffer overflows.
+    // format_to_n writes at most size - 1 characters; result.size is the untruncated length, so
+    // the terminator goes where the writing stopped, not at result.size.
     auto result = fmt::format_to_n(buf.data(), buf.size() - 1, fmt, std::forward<T>(args)...);
-    buf[result.size] = '\0';
+    *result.out = '\0';
     __android_log_write(prio, tag, buf.data());
 }
 }  // namespace vector::native::detail
