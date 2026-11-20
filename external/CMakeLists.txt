@@ -13,7 +13,9 @@ set(XZ_SOURCES
 set(XZ_INCLUDES xz-embedded/linux/include/linux xz-embedded/userspace)
 list(TRANSFORM XZ_SOURCES PREPEND xz-embedded/linux/lib/xz/)
 add_library(xz_static STATIC ${XZ_SOURCES})
-target_compile_options(xz_static PRIVATE -DXZ_USE_CRC64)
+# PUBLIC: linux/xz.h declares xz_crc64_init() only where XZ_USE_CRC64 is defined, and a user of
+# the decoder has to call it before decoding a stream that carries a CRC64 check.
+target_compile_definitions(xz_static PUBLIC XZ_USE_CRC64)
 target_include_directories(xz_static PRIVATE ${XZ_INCLUDES})
 
 option(LSPLANT_BUILD_SHARED OFF)

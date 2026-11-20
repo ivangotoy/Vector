@@ -184,6 +184,10 @@ bool ElfImage::decompressGnuDebugData() {
          debugdata_size);
 
     xz_crc32_init();
+    // xz_static is built with XZ_USE_CRC64, so a stream with a CRC64 check is accepted and
+    // verified against this table; left uninitialised it is all zeroes and every such stream
+    // fails as corrupt.
+    xz_crc64_init();
     struct xz_dec *dec = xz_dec_init(XZ_DYNALLOC, 1 << 26);
     if (!dec) return false;
 
