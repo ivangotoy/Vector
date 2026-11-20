@@ -196,8 +196,15 @@ inline static auto do_dlopen_hook =
     if (native_init != nullptr) {
         if (auto callback = native_init(g_native_api_entries)) {
             std::lock_guard<std::mutex> lock(g_module_registry_mutex);
-            g_module_loaded_callbacks.push_back(callback);
-            LOGI("Initialized native module '{}' and registered its callback.", lib_name.c_str());
+            // native_init runs again whenever the library is opened again - a repeat dlopen
+            // returns the same handle and passes the match above - and hands back the same
+            // callback. Registering it twice would deliver every later dlopen to the module twice.
+            if (std::find(g_module_loaded_callbacks.begin(), g_module_loaded_callbacks.end(),
+                          callback) == g_module_loaded_callbacks.end()) {
+                g_module_loaded_callbacks.push_back(callback);
+                LOGI("Initialized native module '{}' and registered its callback.",
+                     lib_name.c_str());
+            }
         }
     }
 
