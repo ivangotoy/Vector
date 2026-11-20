@@ -48,13 +48,13 @@ object AppIconCache {
      * The cache key for one app at one size.
      *
      * The size is in the key because the same app drawn at two sizes is two rasterisations. The uid
-     * tells a reinstall that was given a new uid apart; an update keeps its uid, so an icon changed by
-     * an update is shown from the next process on. A package parsed out of an apk file has no uid,
-     * which is what keeps a module's own icon from colliding with the installed copy of the same
-     * package.
+     * tells a reinstall that was given a new uid apart, and the APK path an update: an update keeps
+     * its uid but is installed under a new directory, so its changed icon is drawn at once. A
+     * package parsed out of an apk file has no uid, which is what keeps a module's own icon from
+     * colliding with the installed copy of the same package.
      */
     fun keyFor(info: ApplicationInfo, sizePx: Int): String =
-        "${info.packageName}:${info.uid}:$sizePx"
+        "${info.packageName}:${info.uid}:${info.sourceDir}:$sizePx"
 
     suspend fun load(
         info: ApplicationInfo,
