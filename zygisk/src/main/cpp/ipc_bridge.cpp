@@ -35,7 +35,8 @@ public:
         // Use the native library's symbol cache to find symbols in the loaded libbinder.so
         auto libbinder = ElfSymbolCache::GetLibBinder();
         if (!libbinder) {
-            LOGW("libbinder.so not found in cache, cannot get caller ID.");
+            // GetId() then answers 0, and CallBooleanMethodV_Hook intercepts nothing for a 0.
+            LOGW("libbinder.so not found in cache: bridge transactions will not be intercepted.");
             return;
         }
 
@@ -47,7 +48,8 @@ public:
             "_ZNK7android14IPCThreadState13getCallingUidEv");
 
         if (!s_self_or_null_fn || !s_get_calling_pid_fn || !s_get_calling_uid_fn) {
-            LOGW("Could not resolve all IPCThreadState symbols. Caller ID check will be disabled.");
+            LOGW("Could not resolve all IPCThreadState symbols: bridge transactions will not be "
+                 "intercepted.");
             // GetId() tests only the first pointer: one found without the others would be called
             // through a null pointer, in system_server.
             s_self_or_null_fn = nullptr;
