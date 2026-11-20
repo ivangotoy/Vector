@@ -1,6 +1,8 @@
 package org.matrix.vector.manager.data.repository
 import android.content.Context
 import android.net.Uri
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 import kotlinx.coroutines.CancellationException
@@ -27,7 +29,7 @@ import org.matrix.vector.manager.logW
 class BackupRepository(private val context: Context, private val daemon: DaemonClient) {
 
     @Serializable
-    private data class BackupFile(
+    internal data class BackupFile(
         val version: Int = FORMAT_VERSION,
         // Which build wrote this. gzip's own comment field is not reachable through
         // GZIPOutputStream, and this document is ours, so it says so itself -- `zcat file | head`
@@ -38,15 +40,13 @@ class BackupRepository(private val context: Context, private val daemon: DaemonC
     )
 
     @Serializable
-    private data class BackupModule(
+    internal data class BackupModule(
         val packageName: String,
         val enabled: Boolean,
         val scope: List<BackupTarget>,
     )
 
-    @Serializable private data class BackupTarget(val packageName: String, val userId: Int)
-
-    private val json = Json { ignoreUnknownKeys = true }
+    @Serializable internal data class BackupTarget(val packageName: String, val userId: Int)
 
     /**
      * Result of a backup: [modules] written, and the packages among them whose scope could not be
@@ -116,12 +116,10 @@ class BackupRepository(private val context: Context, private val daemon: DaemonC
     suspend fun restoreFrom(uri: Uri): Result<RestoreOutcome> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val text =
+                val payload =
                     context.contentResolver.openInputStream(uri)?.use { input ->
-                        GZIPInputStream(input).use { it.readBytes().decodeToString() }
+                        readBackup(input)
                     } ?: error("could not open the chosen file for reading")
-
-                val payload = json.decodeFromString<BackupFile>(text)
 
                 var restored = 0
                 var skipped = 0
@@ -171,7 +169,34 @@ class BackupRepository(private val context: Context, private val daemon: DaemonC
                 }
         }
 
-    private companion object {
+    internal companion object {
         const val FORMAT_VERSION = 1
+
+        /**
+         * The most a backup may inflate to. A scope list of hundreds of modules is a few megabytes
+         * of JSON; past this the file is not one of ours, and reading it whole would exhaust the
+         * heap, which parasitically is `com.android.shell`'s.
+         */
+        const val MAX_BACKUP_BYTES = 16 * 1024 * 1024
+
+        private val json = Json { ignoreUnknownKeys = true }
+
+        /**
+         * A backup file read from [input], refused when it inflates past [limit] bytes.
+         */
+        internal fun readBackup(input: InputStream, limit: Int = MAX_BACKUP_BYTES): BackupFile {
+            val bytes = ByteArrayOutputStream()
+            GZIPInputStream(input).use { gzip ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    val read = gzip.read(buffer)
+                    if (read < 0) break
+                    check(bytes.size() + read <= limit) { "backup inflates past $limit bytes" }
+                    bytes.write(buffer, 0, read)
+                }
+            }
+            val payload = json.decodeFromString<BackupFile>(bytes.toByteArray().decodeToString())
+            return payload
+        }
     }
 }
