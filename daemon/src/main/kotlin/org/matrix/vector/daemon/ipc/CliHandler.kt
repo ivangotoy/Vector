@@ -282,6 +282,7 @@ object CliHandler {
               staged.toPath(), File(currentDbPath).toPath(), java.nio.file.StandardCopyOption.ATOMIC_MOVE)
           helper.writableDatabase // reopened before any other thread can open the old path
         } finally {
+          staged.delete() // still there only when the swap failed
           helper.swapLock.unlock()
         }
 
