@@ -247,7 +247,8 @@ void VectorModule::preAppSpecialize(zygisk::AppSpecializeArgs *args) {
             is_manager_app_ = true;
 
             // Add GID_INET to the GID list.
-            int original_gids_count = env_->GetArrayLength(args->gids);
+            // A null gids array is no supplementary groups; GetArrayLength on null is undefined.
+            int original_gids_count = args->gids ? env_->GetArrayLength(args->gids) : 0;
             jintArray new_gids = env_->NewIntArray(original_gids_count + 1);
             if (env_->ExceptionCheck()) {
                 LOGE("Failed to create new GID array for manager.");
@@ -255,9 +256,16 @@ void VectorModule::preAppSpecialize(zygisk::AppSpecializeArgs *args) {
                 return;
             }
 
-            jint *gids_array = env_->GetIntArrayElements(args->gids, nullptr);
-            env_->SetIntArrayRegion(new_gids, 0, original_gids_count, gids_array);
-            env_->ReleaseIntArrayElements(args->gids, gids_array, JNI_ABORT);
+            if (original_gids_count > 0) {
+                jint *gids_array = env_->GetIntArrayElements(args->gids, nullptr);
+                if (gids_array == nullptr) {
+                    LOGE("Failed to read the GID list for manager.");
+                    env_->ExceptionClear();
+                    return;
+                }
+                env_->SetIntArrayRegion(new_gids, 0, original_gids_count, gids_array);
+                env_->ReleaseIntArrayElements(args->gids, gids_array, JNI_ABORT);
+            }
 
             jint inet_gid = GID_INET;
             env_->SetIntArrayRegion(new_gids, original_gids_count, 1, &inet_gid);
