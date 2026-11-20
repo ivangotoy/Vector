@@ -40,6 +40,7 @@ class InjectedModuleService(private val packageName: String) : IModuleService.St
   }
 
   private val nextSeq = java.util.concurrent.atomic.AtomicLong()
+  private val subscribersLock = Any()
 
   private val callbacks = ConcurrentHashMap<String, MutableSet<Subscriber>>()
 
@@ -61,21 +62,30 @@ class InjectedModuleService(private val packageName: String) : IModuleService.St
         "map", PreferenceStore.getModulePrefs(packageName, userId, group) as Serializable)
 
     if (callback != null) {
-      val groupCallbacks = callbacks.getOrPut(group) { ConcurrentHashMap.newKeySet() }
       val subscriber =
           Subscriber(userId, callback, Binder.getCallingPid(), nextSeq.getAndIncrement())
-      // One process may hold at most MAX_SUBSCRIBERS_PER_PROCESS per group: each hot reload
-      // registers again without an unregister call, so the oldest of that process is dropped
-      // instead of refusing the newest, which is the one in use.
-      synchronized(groupCallbacks) {
-        val mine = groupCallbacks.filter { it.pid == subscriber.pid }
-        val evict = oldestBeyondCap(mine.map { it.seq }, MAX_SUBSCRIBERS_PER_PROCESS - 1).toSet()
-        mine
-            .filter { it.seq in evict }
-            .forEach { old ->
-              groupCallbacks.remove(old)
-              old.recipient?.let { r -> runCatching { old.callback.asBinder().unlinkToDeath(r, 0) } }
-            }
+      // One process may hold at most MAX_SUBSCRIBERS_PER_PROCESS per group and
+      // MAX_SUBSCRIBERS_PER_PROCESS_TOTAL over all groups (group names come from the caller): each
+      // hot reload registers again without an unregister call, so the oldest of that process are
+      // dropped instead of refusing the newest, which is the one in use.
+      synchronized(subscribersLock) {
+        // Taken under the lock: the clean-up below drops empty groups, and a set fetched outside
+        // it could be one that was just dropped.
+        val groupCallbacks = callbacks.getOrPut(group) { ConcurrentHashMap.newKeySet() }
+        fun evict(old: Subscriber) {
+          callbacks.values.forEach { it.remove(old) }
+          old.recipient?.let { r -> runCatching { old.callback.asBinder().unlinkToDeath(r, 0) } }
+        }
+        val inGroup = groupCallbacks.filter { it.pid == subscriber.pid }
+        val overGroup =
+            oldestBeyondCap(inGroup.map { it.seq }, MAX_SUBSCRIBERS_PER_PROCESS - 1).toSet()
+        inGroup.filter { it.seq in overGroup }.forEach(::evict)
+        val everywhere = callbacks.values.flatMap { set -> set.filter { it.pid == subscriber.pid } }
+        val overTotal =
+            oldestBeyondCap(everywhere.map { it.seq }, MAX_SUBSCRIBERS_PER_PROCESS_TOTAL - 1)
+                .toSet()
+        everywhere.filter { it.seq in overTotal }.forEach(::evict)
+        callbacks.entries.removeIf { (name, set) -> set.isEmpty() && name != group }
         // Linked under the lock, so a later eviction always finds the recipient to unlink.
         val recipient = IBinder.DeathRecipient { groupCallbacks.remove(subscriber) }
         subscriber.recipient = recipient
@@ -123,6 +133,9 @@ class InjectedModuleService(private val packageName: String) : IModuleService.St
 
 /** Subscribers one process may hold per preference group before its oldest are dropped. */
 internal const val MAX_SUBSCRIBERS_PER_PROCESS = 16
+
+/** Subscribers one process may hold over all groups before its oldest are dropped. */
+internal const val MAX_SUBSCRIBERS_PER_PROCESS_TOTAL = 256
 
 /** The [keep] newest of [seqs] stay; the rest, oldest first, are returned. */
 internal fun oldestBeyondCap(seqs: List<Long>, keep: Int): List<Long> {

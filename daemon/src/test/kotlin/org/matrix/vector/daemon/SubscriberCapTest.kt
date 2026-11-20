@@ -3,6 +3,7 @@ package org.matrix.vector.daemon
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.matrix.vector.daemon.ipc.MAX_SUBSCRIBERS_PER_PROCESS
+import org.matrix.vector.daemon.ipc.MAX_SUBSCRIBERS_PER_PROCESS_TOTAL
 import org.matrix.vector.daemon.ipc.oldestBeyondCap
 
 /** Hot reloads register again without unregistering; one process keeps only its newest few. */
@@ -21,5 +22,12 @@ class SubscriberCapTest {
   fun aNewRegistrationAtTheCapDropsExactlyOne() {
     val held = (0L until MAX_SUBSCRIBERS_PER_PROCESS.toLong()).toList()
     assertEquals(listOf(0L), oldestBeyondCap(held, MAX_SUBSCRIBERS_PER_PROCESS - 1))
+  }
+
+  @Test
+  fun theTotalCapIsAboveThePerGroupCap() {
+    assert(MAX_SUBSCRIBERS_PER_PROCESS_TOTAL > MAX_SUBSCRIBERS_PER_PROCESS)
+    val held = (0L until MAX_SUBSCRIBERS_PER_PROCESS_TOTAL.toLong()).toList()
+    assertEquals(listOf(0L), oldestBeyondCap(held, MAX_SUBSCRIBERS_PER_PROCESS_TOTAL - 1))
   }
 }
