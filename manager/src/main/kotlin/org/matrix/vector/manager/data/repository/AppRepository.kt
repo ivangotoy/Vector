@@ -63,7 +63,7 @@ class AppRepository(
      * exactly what lets the next caller retry instead of joining a failure for the life of the
      * process.
      */
-    private var inFlight: Deferred<List<AppInfo>>? = null
+    private var inFlight: Deferred<Result<List<AppInfo>>>? = null
 
     /** The same arrangement for [moduleScanPackages], which asks the daemon a different question. */
     @Volatile private var cachedModuleScan: List<PackageInfo>? = null
@@ -146,9 +146,16 @@ class AppRepository(
         return Result.success(packages)
     }
 
-    suspend fun getInstalledApps(): List<AppInfo> {
+    /** The installed apps, or an empty list when the daemon could not enumerate them. */
+    suspend fun getInstalledApps(): List<AppInfo> = installedApps().getOrDefault(emptyList())
+
+    /**
+     * The same list, with a failed enumeration kept apart from a device that has no apps, so that a
+     * caller deriving something from it does not cache the derivative of a failure.
+     */
+    private suspend fun installedApps(): Result<List<AppInfo>> {
         cachedApps?.let {
-            return it
+            return Result.success(it)
         }
         val job =
             lock.withLock {
@@ -156,7 +163,7 @@ class AppRepository(
                 // already published, and joining a job only to learn what the field beside it now
                 // holds is a suspension for nothing.
                 cachedApps?.let {
-                    return it
+                    return Result.success(it)
                 }
                 inFlight?.takeIf { it.isActive }
                     ?: scope.async(Dispatchers.IO) { fetchInstalledApps() }.also { inFlight = it }
@@ -164,7 +171,7 @@ class AppRepository(
         return job.await()
     }
 
-    private suspend fun fetchInstalledApps(): List<AppInfo> {
+    private suspend fun fetchInstalledApps(): Result<List<AppInfo>> {
         val startedAt = generation.get()
         val flags = PackageManager.MATCH_UNINSTALLED_PACKAGES or PackageManager.GET_META_DATA
 
@@ -174,7 +181,7 @@ class AppRepository(
             if (failure !is CancellationException) {
                 logW("apps: installed package list unavailable from daemon", failure)
             }
-            return emptyList()
+            return Result.failure(failure)
         }
 
         val packages = result.getOrNull() ?: emptyList()
@@ -209,7 +216,7 @@ class AppRepository(
             }
 
         if (generation.get() == startedAt) cachedApps = appList
-        return appList
+        return Result.success(appList)
     }
 
     /**
@@ -231,8 +238,13 @@ class AppRepository(
                 return@withContext it
             }
             val startedAt = generation.get()
+            // A failed enumeration answers this call with nothing and caches nothing: cached, its
+            // empty set would stop the scope editor hiding modules until the next package event.
             val packages =
-                getInstalledApps()
+                installedApps()
+                    .getOrElse {
+                        return@withContext emptySet()
+                    }
                     .asSequence()
                     .filter {
                         moduleDetection
