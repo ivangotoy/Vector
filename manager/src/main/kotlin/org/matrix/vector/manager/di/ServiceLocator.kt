@@ -39,6 +39,7 @@ import org.matrix.vector.manager.data.repository.ModuleRepository
 import org.matrix.vector.manager.data.repository.RepoRepository
 import org.matrix.vector.manager.data.repository.SettingsRepository
 import org.matrix.vector.manager.ipc.DaemonClient
+import org.matrix.vector.manager.ipc.atMostEvery
 import org.matrix.vector.manager.ipc.daemonPackageEventsFlow
 import org.matrix.vector.manager.ipc.packageEventsFlow
 import org.matrix.vector.ui.net.HttpClientFactory
@@ -62,6 +63,9 @@ import org.matrix.vector.ui.net.VectorDns
 object ServiceLocator {
 
     /** Survives configuration changes, unlike anything scoped to the activity. */
+    /** How often package events may run [observePackageChanges]'s body; the first runs at once. */
+    private const val PACKAGE_EVENT_SPACING_MS = 1_000L
+
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     @Volatile private var appContext: Context? = null
@@ -260,18 +264,22 @@ object ServiceLocator {
      * The daemon watches every user and re-broadcasts what it saw, but only while it is alive, so
      * it cannot replace the platform source either.
      *
-     * A package event on the primary user therefore arrives twice and this body runs twice, which
-     * is left alone on purpose: it drops two cached fields, reads the enabled list once and bumps a
-     * revision, and the platform alone already delivers ADDED and REPLACED for a single update — a
-     * repeat is the case this collector was written for, not a new one.
+     * A package event on the primary user therefore arrives twice, and the platform alone already
+     * delivers ADDED and REPLACED for a single update, so this body is written to be repeated: it
+     * drops two cached fields, reads the enabled list once and bumps a revision. It runs at most
+     * once per [PACKAGE_EVENT_SPACING_MS], though, with whatever arrived meanwhile folded into one
+     * run: the daemon's notification can be sent by any app, and one sending it in a loop made
+     * this body, and the rediscovery every revision bump starts, run back to back.
      */
     private fun observePackageChanges() {
         appScope.launch {
-            merge(context.packageEventsFlow(), context.daemonPackageEventsFlow()).collect {
-                apps.invalidate()
-                modules.refresh()
-                modules.notePackagesChanged()
-            }
+            merge(context.packageEventsFlow(), context.daemonPackageEventsFlow())
+                .atMostEvery(PACKAGE_EVENT_SPACING_MS)
+                .collect {
+                    apps.invalidate()
+                    modules.refresh()
+                    modules.notePackagesChanged()
+                }
         }
     }
 

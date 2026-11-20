@@ -7,8 +7,11 @@ import android.content.IntentFilter
 import androidx.core.content.ContextCompat
 import androidx.core.content.IntentCompat
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.transform
 import org.matrix.vector.manager.BuildConfig
 import org.matrix.vector.manager.logW
 import org.matrix.vector.ui.module.PER_USER_RANGE
@@ -116,7 +119,8 @@ fun Context.daemonPackageEventsFlow(): Flow<PackageEvent> = callbackFlow {
     // SDK 34 a dynamic receiver registered with neither export flag throws at registration. The
     // action is guessable and no permission is demanded of the sender, so any app on the device
     // can forge one of these. That is acceptable for exactly one reason: a delivery makes the
-    // manager drop a cache and ask the daemon for it again, and nothing else. Nothing is believed
+    // manager drop a cache and ask the daemon for it again, and nothing else, and the collector
+    // takes at most one delivery a second (see atMostEvery). Nothing is believed
     // on the strength of the payload — the collector does not even read which package an event
     // names, and the "isXposedModule" flag the daemon also sends is deliberately never read here,
     // because whether a package is a module is settled by inspecting its APK.
@@ -137,6 +141,21 @@ fun Context.daemonPackageEventsFlow(): Flow<PackageEvent> = callbackFlow {
 
     awaitClose { if (registered) unregisterReceiver(receiver) }
 }
+
+/**
+ * Passes the first value at once, then at most one value per [intervalMs]: whatever arrives while
+ * the previous one is handled, or within [intervalMs] after it, is folded into the newest.
+ *
+ * For a consumer that only cares that *something* happened. The daemon's notification is exported
+ * and any app can send it, and each delivery drops the app caches, asks the daemon for the enabled
+ * list and starts a rediscovery. Folding rather than debouncing, because a debounce under a steady
+ * flood never fires at all; the newest value is never dropped, so the last real event is handled.
+ */
+fun <T> Flow<T>.atMostEvery(intervalMs: Long): Flow<T> =
+    conflate().transform {
+        emit(it)
+        delay(intervalMs)
+    }
 
 /**
  * The daemon's notification, read back with the types it was actually written with.
