@@ -1,5 +1,24 @@
 [
   {
+    "id": 3327,
+    "tag_name": "v2.2-3327-458cefa8-ivangotoy-Vector-ci6",
+    "name": "Vector v2.2 (3327-458cefa8-ivangotoy-Vector)-ci6",
+    "prerelease": false,
+    "target_commitish": "458cefa84fca1530cff3cd8535d9a32674001f5f",
+    "published_at": "2026-11-20T20:09:24Z",
+    "html_url": "https://git.digtvbg.com/ivangotoy/Vector/releases/tag/v2.2-3327-458cefa8-ivangotoy-Vector-ci6",
+    "body": "Built by module-release #6 from 458cefa84fca (JingMatrix/Vector@master 6f6b976e3315).\nversionCode 3327\nsha256 ffc120350c3052a26513a1b1c6ef9a48753317d5e0687684c32835d7ee05759b  Vector-v2.2-3327-458cefa8-ivangotoy-Vector-ci6.zip\nupdateJson https://git.digtvbg.com/ivangotoy/Vector/raw/branch/main/.forgejo/update.json",
+    "assets": [
+      {
+        "id": 3327,
+        "name": "Vector-v2.2-3327-Release.zip",
+        "size": 7462543,
+        "browser_download_url": "https://git.digtvbg.com/ivangotoy/Vector/releases/download/v2.2-3327-458cefa8-ivangotoy-Vector-ci6/Vector-v2.2-3327-458cefa8-ivangotoy-Vector-ci6.zip",
+        "digest": "sha256:ffc120350c3052a26513a1b1c6ef9a48753317d5e0687684c32835d7ee05759b"
+      }
+    ]
+  },
+  {
     "id": 3305,
     "tag_name": "v2.2-3305-0bc2db08-ivangotoy-Vector-ci5",
     "name": "Vector v2.2 (3305-0bc2db08-ivangotoy-Vector)-ci5",
