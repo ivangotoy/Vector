@@ -39,4 +39,11 @@ class BackupReadTest {
             BackupRepository.readBackup(backup(1, padding = 1_000_000), limit = 64 * 1024)
         }
     }
+
+    @Test
+    fun aNewerFormatIsRefused() {
+        assertThrows(IllegalStateException::class.java) {
+            BackupRepository.readBackup(backup(BackupRepository.FORMAT_VERSION + 1))
+        }
+    }
 }

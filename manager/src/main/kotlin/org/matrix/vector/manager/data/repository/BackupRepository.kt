@@ -184,7 +184,8 @@ class BackupRepository(private val context: Context, private val daemon: DaemonC
         private val json = Json { ignoreUnknownKeys = true }
 
         /**
-         * A backup file read from [input], refused when it inflates past [limit] bytes.
+         * A backup file read from [input], refused when it inflates past [limit] bytes or was
+         * written in a format newer than [FORMAT_VERSION].
          */
         internal fun readBackup(input: InputStream, limit: Int = MAX_BACKUP_BYTES): BackupFile {
             val bytes = ByteArrayOutputStream()
@@ -198,6 +199,11 @@ class BackupRepository(private val context: Context, private val daemon: DaemonC
                 }
             }
             val payload = json.decodeFromString<BackupFile>(bytes.toByteArray().decodeToString())
+            // A newer format may mean something this build cannot know; refused like an unreadable
+            // file rather than half-applied.
+            check(payload.version <= FORMAT_VERSION) {
+                "backup format ${payload.version} is newer than $FORMAT_VERSION"
+            }
             return payload
         }
     }
