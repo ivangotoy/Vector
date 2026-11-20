@@ -350,12 +350,14 @@ public final class XSharedPreferences implements SharedPreferences {
             // SharedPreferencesImpl has a canRead() check, so it doesn't log anything in case the file doesn't exist
         } catch (IOException e) {
             Log.w(TAG, "getSharedPreferences failed for: " + mFilename, e);
+        } catch (RuntimeException e) {
+            // Thrown out of the platform's parser for a malformed file. Escaping here, it would end
+            // the load thread, and the app with it, before mLoaded is set: every getter waits on it.
+            Log.w(TAG, "getSharedPreferences failed for: " + mFilename, e);
         } finally {
             if (result != null && result.stream != null) {
                 try {
                     result.stream.close();
-                } catch (RuntimeException rethrown) {
-                    throw rethrown;
                 } catch (Exception ignored) {
                 }
             }
