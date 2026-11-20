@@ -220,8 +220,14 @@ object ModuleDatabase {
 
   fun enableModule(packageName: String): Boolean {
     if (packageName == "lspd") return false
-    val db = dbHelper.writableDatabase
-    var changed = false
+    val changed = writeEnabled(dbHelper.writableDatabase, packageName)
+    if (changed) onEnabled(packageName)
+    return changed
+  }
+
+  /** The row half of [enableModule], so [setModuleScope] can make it part of its transaction. */
+  private fun writeEnabled(db: SQLiteDatabase, packageName: String): Boolean {
+    val changed: Boolean
 
     // First, check if it exists. If not, we need to "discover" it.
     val exists =
@@ -244,32 +250,33 @@ object ModuleDatabase {
       val values = ContentValues().apply { put("enabled", 1) }
       changed = db.update("modules", values, "module_pkg_name = ?", arrayOf(packageName)) > 0
     }
-
-    if (changed) {
-      ConfigCache.requestCacheUpdate()
-      // The shade may be telling the user this module "is not activated yet". It has just been
-      // activated, and nothing else was ever going to take that notice down: it is only marked
-      // auto-cancel, which fires when it is tapped, and the sole cancel path belonged to the scope
-      // prompt. The manager cannot do it either — the AIDL exposes no cancel, and a parasitic
-      // manager could not cancel a notification posted as "android" in any case.
-      //
-      // It lives here, at the data layer, rather than in ManagerService because this function is
-      // where the activations that go through the module table converge: the manager's toggle
-      // (ManagerService.enableModule), the socket CLI's `modules enable`, a manager backup restore
-      // — which replays what it read one setModuleEnabled at a time — and setModuleScope's
-      // implicit enable below. Putting it one level up would cover the manager alone and leave the
-      // other three lying to the user. Reaching out of the database for it is the same reach
-      // requestCacheUpdate() above already makes, and for the same reason — a row changed, and
-      // something outside has to be told.
-      //
-      // Not *every* activation, though, and the exception is worth knowing: the socket CLI's
-      // `db restore` copies a whole database file over the live one and calls nothing here, so a
-      // module the restored file has enabled keeps a stale "not activated yet" notice in the shade
-      // until something touches it again. That is a root-shell command that replaces the
-      // configuration wholesale, and the notice is one of several things it does not reconcile.
-      NotificationManager.cancelModuleUpdated(packageName)
-    }
     return changed
+  }
+
+  /** What has to be told once a module's row says enabled. */
+  private fun onEnabled(packageName: String) {
+    ConfigCache.requestCacheUpdate()
+    // The shade may be telling the user this module "is not activated yet". It has just been
+    // activated, and nothing else was ever going to take that notice down: it is only marked
+    // auto-cancel, which fires when it is tapped, and the sole cancel path belonged to the scope
+    // prompt. The manager cannot do it either — the AIDL exposes no cancel, and a parasitic
+    // manager could not cancel a notification posted as "android" in any case.
+    //
+    // It lives here, at the data layer, rather than in ManagerService because this function is
+    // where the activations that go through the module table converge: the manager's toggle
+    // (ManagerService.enableModule), the socket CLI's `modules enable`, a manager backup restore
+    // — which replays what it read one setModuleEnabled at a time — and setModuleScope's
+    // implicit enable below. Putting it one level up would cover the manager alone and leave the
+    // other three lying to the user. Reaching out of the database for it is the same reach
+    // requestCacheUpdate() above already makes, and for the same reason — a row changed, and
+    // something outside has to be told.
+    //
+    // Not *every* activation, though, and the exception is worth knowing: the socket CLI's
+    // `db restore` copies a whole database file over the live one and calls nothing here, so a
+    // module the restored file has enabled keeps a stale "not activated yet" notice in the shade
+    // until something touches it again. That is a root-shell command that replaces the
+    // configuration wholesale, and the notice is one of several things it does not reconcile.
+    NotificationManager.cancelModuleUpdated(packageName)
   }
 
   fun disableModule(packageName: String): Boolean {
@@ -283,6 +290,9 @@ object ModuleDatabase {
   }
 
   fun setModuleScope(packageName: String, scope: MutableList<ScopeEntry>): Boolean {
+    // The framework's own row holds its preferences, not a module; a scope written to it would only
+    // be rows nothing reads.
+    if (packageName == "lspd") return false
     // Last line of defence for staticScope. The manager, the socket CLI, a backup restore and a
     // module's own requestScope all end up here, so refusing here covers every one of them.
     ConfigCache.staticScopeOf(packageName)?.let { claimed ->
@@ -292,10 +302,13 @@ object ModuleDatabase {
         return false
       }
     }
-    enableModule(packageName)
     val db = dbHelper.writableDatabase
+    // The enable is part of the scope write: done before the transaction, a write that then failed
+    // left the module switched on while the caller was told nothing had been stored.
+    var enabled = false
     db.beginTransaction()
     try {
+      enabled = writeEnabled(db, packageName)
       val mid =
           db.compileStatement("SELECT mid FROM modules WHERE module_pkg_name = ?")
               .apply { bindString(1, packageName) }
@@ -331,6 +344,7 @@ object ModuleDatabase {
     } finally {
       db.endTransaction()
     }
+    if (enabled) onEnabled(packageName)
     ConfigCache.requestCacheUpdate()
     return true
   }
