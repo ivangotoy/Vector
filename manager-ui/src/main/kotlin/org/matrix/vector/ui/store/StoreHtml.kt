@@ -108,6 +108,10 @@ private fun HtmlPane(
                 claimVerticalDrags()
                 settings.javaScriptEnabled = false
                 settings.domStorageEnabled = false
+                // Neither file:// nor content:// is any README's business. Their defaults depend on
+                // the target SDK the WebView sees in the host process, so both are stated here.
+                settings.allowFileAccess = false
+                settings.allowContentAccess = false
                 settings.textZoom = 90
                 webViewClient =
                     object : WebViewClient() {
