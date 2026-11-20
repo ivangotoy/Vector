@@ -91,7 +91,7 @@ object CliSocketServer {
         return
       }
 
-      val requestJson = input.readUTF()
+      val requestJson = readFrame(input)
       val request = VectorIPC.gson.fromJson(requestJson, CliRequest::class.java)
 
       // Intercept Log Streaming specifically before CliHandler
@@ -101,7 +101,7 @@ object CliSocketServer {
 
         if (logFile != null && logFile.exists()) {
           val response = CliResponse(success = true, isFdAttached = true)
-          output.writeUTF(VectorIPC.gson.toJson(response))
+          writeFrame(output, VectorIPC.gson.toJson(response))
 
           // Open file and get raw FileDescriptor
           FileInputStream(logFile).use { fis ->
@@ -113,7 +113,8 @@ object CliSocketServer {
           // The client holds its own copy once the write has sent it
           return
         } else {
-          output.writeUTF(
+          writeFrame(
+              output,
               VectorIPC.gson.toJson(CliResponse(success = false, error = "Log file not found.")))
           return
         }
@@ -121,7 +122,7 @@ object CliSocketServer {
 
       // Standard commands go to CliHandler as usual
       val response = CliHandler.execute(request)
-      output.writeUTF(VectorIPC.gson.toJson(response))
+      writeFrame(output, VectorIPC.gson.toJson(response))
     } finally {
       socket.close()
     }

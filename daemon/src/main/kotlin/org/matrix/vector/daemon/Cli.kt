@@ -10,6 +10,7 @@ import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.FileDescriptor
 import java.io.FileInputStream
+import java.io.IOException
 import java.util.concurrent.Callable
 import kotlin.system.exitProcess
 import org.matrix.vector.daemon.data.FileSystem
@@ -30,6 +31,31 @@ data class CliResponse(
     val error: String? = null,
     val isFdAttached: Boolean = false
 )
+
+// --- IPC Framing ---
+/** Largest request or response either end accepts, so a bad length cannot ask for any amount. */
+internal const val MAX_FRAME_BYTES = 16 * 1024 * 1024
+
+/**
+ * One request or response on the CLI socket: its UTF-8 length as an int, then the bytes.
+ * `writeUTF` capped a message at 65535 bytes, and a pretty-printed answer listing a large scope
+ * went past that, so the daemon failed to send it and the client reported a socket failure.
+ */
+internal fun writeFrame(output: DataOutputStream, text: String) {
+  val bytes = text.toByteArray(Charsets.UTF_8)
+  if (bytes.size > MAX_FRAME_BYTES) throw IOException("A message of ${bytes.size} bytes is too long")
+  output.writeInt(bytes.size)
+  output.write(bytes)
+  output.flush()
+}
+
+internal fun readFrame(input: DataInputStream): String {
+  val size = input.readInt()
+  if (size < 0 || size > MAX_FRAME_BYTES) throw IOException("Refusing a message of $size bytes")
+  val bytes = ByteArray(size)
+  input.readFully(bytes)
+  return String(bytes, Charsets.UTF_8)
+}
 
 // --- IPC Client Logic ---
 object VectorIPC {
@@ -60,10 +86,10 @@ object VectorIPC {
       output.writeLong(BuildConfig.CLI_TOKEN_LSB)
 
       // Send Request
-      output.writeUTF(gson.toJson(request))
+      writeFrame(output, gson.toJson(request))
 
       // Read Response
-      val responseJson = input.readUTF()
+      val responseJson = readFrame(input)
       val response = gson.fromJson(responseJson, CliResponse::class.java)
 
       // Handle Log Streaming
