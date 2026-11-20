@@ -222,7 +222,14 @@ class SettingsRepository(context: Context) : StoreSettings, NetworkSettings {
     private val _storeInstalls = MutableStateFlow(readStoreInstalls())
     override val storeInstalls: StateFlow<Map<String, StoreInstall>> = _storeInstalls.asStateFlow()
 
-    /** Records what the Store installed for [packageName], replacing any earlier note of it. */
+    /**
+     * Records what the Store installed for [packageName], replacing any earlier note of it.
+     *
+     * Synchronized: it is a read, a write and a publish, and its two callers, the Store's install
+     * and the update queue, finish on the multi-threaded application scope. Two notes landing
+     * together would otherwise each start from the map without the other, and one would be lost.
+     */
+    @Synchronized
     fun noteStoreInstall(packageName: String, install: StoreInstall) {
         val next = _storeInstalls.value + (packageName to install)
         val rows = next.mapTo(HashSet()) { (name, noted) -> encode(name, noted) }
