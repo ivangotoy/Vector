@@ -61,15 +61,32 @@ class StoreSubresourceTest {
     private fun get(path: String) =
         Request.Builder().url("http://public.example:${server.localPort}$path").build()
 
+    // The test server is on loopback; for these two cases the connected-address rule is told that
+    // no address is local, so only the host rule is exercised.
+    private val publicAddresses: (java.net.InetAddress) -> Boolean = { false }
+
     @Test
     fun publicHostIsFetched() {
-        localHopsRefused(client).newCall(get("/img")).execute().use { assertEquals(200, it.code) }
+        localHopsRefused(client, publicAddresses).newCall(get("/img")).execute().use {
+            assertEquals(200, it.code)
+        }
+    }
+
+    @Test
+    fun aPublicNameThatConnectsToALocalAddressIsRefused() {
+        try {
+            localHopsRefused(client).newCall(get("/img")).execute().use {
+                fail("public.example connected to loopback and was fetched (HTTP ${it.code})")
+            }
+        } catch (e: IOException) {
+            assertEquals("local address refused", e.message)
+        }
     }
 
     @Test
     fun redirectToLocalAddressIsRefused() {
         try {
-            localHopsRefused(client).newCall(get("/start")).execute().use {
+            localHopsRefused(client, publicAddresses).newCall(get("/start")).execute().use {
                 fail("redirect to 127.0.0.1 was followed (HTTP ${it.code})")
             }
         } catch (e: IOException) {

@@ -48,15 +48,25 @@ fun fetchStoreSubresource(
 }
 
 /**
- * [client] with the [isLocalAddress] check on every hop: a redirect must not reach an address the
- * first URL could not. A network interceptor runs once the connection is open, so a refused hop
- * costs a TCP connect but never sends the request.
+ * [client] with the local-address checks on every hop: a redirect must not reach an address the
+ * first URL could not, and a public name must not lead to a local address either. A network
+ * interceptor runs once the connection is open, so it sees the address actually connected to; a
+ * refused hop costs a TCP connect but never sends the request. Through a proxy the connected
+ * address is the proxy's, so only the host check applies there.
  */
-internal fun localHopsRefused(client: OkHttpClient): OkHttpClient =
+internal fun localHopsRefused(
+    client: OkHttpClient,
+    isLocal: (java.net.InetAddress) -> Boolean = ::isLocalInetAddress,
+): OkHttpClient =
     client
         .newBuilder()
         .addNetworkInterceptor { chain ->
             if (isLocalAddress(chain.request().url.host)) throw java.io.IOException("local address refused")
+            val route = chain.connection()?.route()
+            val connected = route?.socketAddress?.address
+            if (route?.proxy?.type() == java.net.Proxy.Type.DIRECT && connected != null && isLocal(connected)) {
+                throw java.io.IOException("local address refused")
+            }
             chain.proceed(chain.request())
         }
         .build()
@@ -66,8 +76,9 @@ private val DOTTED_QUAD = Regex("""(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|
 
 /**
  * Whether [host] (as OkHttp normalised it) is an address on this device or its local network, which
- * a README has no business making the manager request. Covers literal addresses and `localhost`
- * only: a public name that resolves to a private address is not caught here.
+ * a README has no business making the manager request. Covers literal addresses and `localhost`;
+ * a public name that resolves to a private address is caught by [localHopsRefused] on the address
+ * it connected to.
  */
 internal fun isLocalAddress(host: String): Boolean {
     val h = host.lowercase().removeSuffix(".") // a fully qualified "127.0.0.1." is the same host
@@ -81,10 +92,14 @@ internal fun isLocalAddress(host: String): Boolean {
         if (!DOTTED_QUAD.matches(h)) return true
     }
     val address = runCatching { java.net.InetAddress.getByName(h) }.getOrNull() ?: return true
-    return address.isLoopbackAddress || address.isSiteLocalAddress || address.isLinkLocalAddress ||
+    return isLocalInetAddress(address)
+}
+
+/** Whether [address] is on this device or its local network: the one rule both checks apply. */
+internal fun isLocalInetAddress(address: java.net.InetAddress): Boolean =
+    address.isLoopbackAddress || address.isSiteLocalAddress || address.isLinkLocalAddress ||
         address.isAnyLocalAddress ||
         (address is java.net.Inet6Address && (address.address[0].toInt() and 0xfe) == 0xfc)
-}
 
 /**
  * A 1×1 transparent GIF. A refused subresource should render as nothing, not as a broken image.
