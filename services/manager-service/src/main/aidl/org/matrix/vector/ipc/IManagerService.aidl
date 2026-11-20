@@ -143,8 +143,9 @@ interface IManagerService {
      * Whether system_server reached the daemon and was given its framework service.
      *
      * <p>Latched once system_server has identified itself to the bootstrap bridge as uid 1000,
-     * process {@code system}, with a life token, <b>and</b> its registration has succeeded - and
-     * never cleared afterwards, because the framework is in that process for as long as it lives.
+     * process {@code system}, with a life token, <b>and</b> its registration has succeeded. It is
+     * cleared when that system_server dies (VectorDaemon's death recipient), because the framework
+     * is in that process for as long as it lives and the next one has to identify itself again.
      * Both halves matter: registration fails when the life token cannot be linked to death, and a
      * true here that only meant "it asked" would claim the framework is in system_server while no
      * module hooking the system loads.</p>

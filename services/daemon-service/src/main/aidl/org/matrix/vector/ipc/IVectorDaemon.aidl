@@ -13,8 +13,8 @@ import org.matrix.vector.ipc.IFrameworkService;
  * The daemon and the zygisk bridge that calls this ship in one zip, so they are always the same
  * build and nothing has to survive a peer of a different revision. A new method must still be
  * appended: inserting one anywhere above renumbers every method after it. Contrast
- * {@code IManagerService}, whose ids are explicit because the manager APK can be installed
- * separately and outlive a flash.</p>
+ * {@code IManagerService}, whose ids are implicit too but which the manager APK, installed
+ * separately and able to outlive a flash, checks through {@code getProtocolVersion} first.</p>
  */
 interface IVectorDaemon {
     /**
