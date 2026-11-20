@@ -66,7 +66,8 @@
 
     <!-- The confirmation. Parasitically this is the ONLY consent gate: the manager runs inside
          com.android.shell, which holds INSTALL_PACKAGES, so the system never asks. It therefore
-         has to name the module, the version, the file and its size before anything is fetched. -->
+         has to name the module, the file, its declared size and the package it installs as
+         before anything is fetched. -->
     <string name="store_confirm_title">Install %1$s?</string>
     <string name="store_confirm_body">%1$s (%2$s) will be downloaded from the module repository and installed as %3$s.</string>
     <string name="store_confirm_trust">A module runs with the framework\'s privileges inside the apps it hooks. Install one only if you trust its author.</string>

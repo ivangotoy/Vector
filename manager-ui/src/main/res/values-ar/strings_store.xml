@@ -70,7 +70,8 @@
     </plurals>
     <!-- The confirmation. Parasitically this is the ONLY consent gate: the manager runs inside
          com.android.shell, which holds INSTALL_PACKAGES, so the system never asks. It therefore
-         has to name the module, the version, the file and its size before anything is fetched. -->
+         has to name the module, the file, its declared size and the package it installs as
+         before anything is fetched. -->
     <string name="store_confirm_title">تثبيت %1$s؟</string>
     <string name="store_confirm_body">سيُنزَّل %1$s ‏(%2$s) من فهرس الوحدات ويُثبَّت باسم %3$s.</string>
     <string name="store_confirm_trust">تعمل الوحدة بصلاحيات الإطار داخل التطبيقات التي تربطها. لا تثبّت وحدة إلا إن كنت تثق بمؤلّفها.</string>

@@ -55,7 +55,8 @@
     </plurals>
     <!-- The confirmation. Parasitically this is the ONLY consent gate: the manager runs inside
          com.android.shell, which holds INSTALL_PACKAGES, so the system never asks. It therefore
-         has to name the module, the version, the file and its size before anything is fetched. -->
+         has to name the module, the file, its declared size and the package it installs as
+         before anything is fetched. -->
     <string name="store_confirm_title">%1$s을(를) 설치할까요?</string>
     <string name="store_confirm_body">%1$s(%2$s)을(를) 모듈 카탈로그에서 내려받아 %3$s(으)로 설치합니다.</string>
     <string name="store_confirm_trust">모듈은 후킹한 앱 안에서 프레임워크의 권한으로 실행됩니다. 만든 사람을 신뢰할 때만 설치하세요.</string>

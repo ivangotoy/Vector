@@ -64,7 +64,8 @@
     </plurals>
     <!-- The confirmation. Parasitically this is the ONLY consent gate: the manager runs inside
          com.android.shell, which holds INSTALL_PACKAGES, so the system never asks. It therefore
-         has to name the module, the version, the file and its size before anything is fetched. -->
+         has to name the module, the file, its declared size and the package it installs as
+         before anything is fetched. -->
     <string name="store_confirm_title">Установить %1$s?</string>
     <string name="store_confirm_body">%1$s (%2$s) будет загружен из репозитория модулей и установлен как %3$s.</string>
     <string name="store_confirm_trust">Модуль работает с правами фреймворка внутри приложений, которые он перехватывает. Устанавливайте его, только если доверяете автору.</string>

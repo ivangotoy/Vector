@@ -21,8 +21,9 @@ import androidx.compose.ui.unit.dp
  *
  * Where the manager inherits `INSTALL_PACKAGES` (shell-mode), the commit that follows installs a
  * third-party APK with no system confirmation at all; standalone, the platform asks as usual. The
- * dialog therefore names the module, the version, the file and its size before anything is
- * downloaded, and says which of the two is about to happen. [silent] — whether the host installs
+ * dialog therefore names the module, the file, its size as the catalogue declares it and the
+ * package it installs as, before anything is downloaded, and says which of the two is about to
+ * happen. It does not name the release version. [silent] — whether the host installs
  * without a further system prompt — is passed in rather than read here, because only the app knows
  * which mode its installer runs in.
  */

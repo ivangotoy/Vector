@@ -55,7 +55,8 @@
     </plurals>
     <!-- The confirmation. Parasitically this is the ONLY consent gate: the manager runs inside
          com.android.shell, which holds INSTALL_PACKAGES, so the system never asks. It therefore
-         has to name the module, the version, the file and its size before anything is fetched. -->
+         has to name the module, the file, its declared size and the package it installs as
+         before anything is fetched. -->
     <string name="store_confirm_title">%1$s をインストールしますか？</string>
     <string name="store_confirm_body">%1$s (%2$s) がモジュールリポジトリからダウンロードされ、%3$s としてインストールされます。</string>
     <string name="store_confirm_trust">モジュールは、フック対象のアプリ内でフレームワークの権限を使って動作します。開発者を信頼できる場合にのみインストールしてください。</string>
