@@ -333,7 +333,7 @@ object CliHandler {
         ManagerService.startNewLogPart(verbose)
         "Logs cleared successfully."
       }
-      // "stream" is handled in SystemServerService.kt to attach the FileDescriptor
+      // "stream" is handled in CliSocketServer.kt, which attaches the FileDescriptor
       else -> throw IllegalArgumentException("Unknown log action: ${request.action}")
     }
   }

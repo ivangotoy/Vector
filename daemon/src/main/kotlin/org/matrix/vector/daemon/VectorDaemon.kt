@@ -244,8 +244,9 @@ object VectorDaemon {
             // a reboot: the device is sent to recovery to be asked whether to erase itself.
             //
             // The two cases are still worth telling apart for whoever reads the log afterwards.
-            // `systemServerRequested` is latched from inside `postServerSpecialize`, so a live
-            // `activity` with nothing behind it means no module arrived at all.
+            // `systemServerRequested` is latched by SystemServerService.attachProcess once the
+            // registration system_server asks for from `postServerSpecialize` has succeeded, so a
+            // live `activity` with nothing behind it means no registration got that far.
             if (!SystemServerService.systemServerRequested) {
               Log.e(TAG, "No Vector module reached system_server; leaving it running")
             } else {
