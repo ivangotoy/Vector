@@ -57,6 +57,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -174,6 +175,7 @@ fun PackageActionSheet(
                 .getOrNull() != null
     }
     var confirmSoftReboot by remember { mutableStateOf(false) }
+    var confirmUninstall by remember { mutableStateOf(false) }
 
     var reordering by remember { mutableStateOf(false) }
 
@@ -273,6 +275,24 @@ fun PackageActionSheet(
     fun finish(block: suspend () -> PackageActionResult) {
         onDismiss()
         scope.launch(Dispatchers.Main) { onResult(block()) }
+    }
+
+    fun uninstall() = finish {
+        val result = daemon.uninstallPackage(packageName, userId)
+        val ok = result.getOrDefault(false)
+        // On `!ok`: a device-policy refusal and a missing user come back as a plain
+        // `false`, which onFailure would never see.
+        if (!ok) {
+            logE(
+                "actions: uninstall of $packageName for user $userId failed",
+                result.exceptionOrNull(),
+            )
+        }
+        PackageActionResult(
+            if (ok) R.string.action_uninstalled else R.string.action_uninstall_failed,
+            appName,
+            tone = if (ok) SnackbarTone.Success else SnackbarTone.Failure,
+        )
     }
 
     fun install(target: DeviceUser, label: String) = finish {
@@ -575,23 +595,34 @@ LocalizedOverlay {
                 title = stringResource(R.string.action_uninstall),
                 tint = colors.error,
             ) {
-                finish {
-                    val result = daemon.uninstallPackage(packageName, userId)
-                    val ok = result.getOrDefault(false)
-                    // On `!ok`: a device-policy refusal and a missing user come back as a plain
-                    // `false`, which onFailure would never see.
-                    if (!ok) {
-                        logE(
-                            "actions: uninstall of $packageName for user $userId failed",
-                            result.exceptionOrNull(),
-                        )
-                    }
-                    PackageActionResult(
-                        if (ok) R.string.action_uninstalled else R.string.action_uninstall_failed,
-                        appName,
-                        tone = if (ok) SnackbarTone.Success else SnackbarTone.Failure,
-                    )
-                }
+                // Irreversible, so it asks first, with the batch uninstall's own words.
+                confirmUninstall = true
+            }
+            if (confirmUninstall) {
+                SharedAlertDialog(
+                    onDismissRequest = { confirmUninstall = false },
+                    icon = { Icon(Icons.Rounded.Delete, contentDescription = null) },
+                    title = { Text(stringResource(R.string.action_uninstall)) },
+                    text = { Text(pluralStringResource(R.plurals.modules_uninstall_body, 1, 1)) },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                confirmUninstall = false
+                                uninstall()
+                            }
+                        ) {
+                            Text(
+                                stringResource(R.string.action_uninstall),
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { confirmUninstall = false }) {
+                            Text(stringResource(UiR.string.store_cancel))
+                        }
+                    },
+                )
             }
         }
 
