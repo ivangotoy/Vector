@@ -832,8 +832,14 @@ class ScopeViewModel(
         }
     }
 
+    /**
+     * On the application scope, because "disable and leave" calls this and pops the screen in the
+     * same tap: popping clears this view model, and work in its scope can then be cancelled before
+     * the toggle's transaction is made, leaving the module enabled with nothing to hook. Kept on
+     * the main thread, where the state it publishes is read.
+     */
     fun setModuleEnabled(enabled: Boolean) {
-        viewModelScope.launch {
+        ServiceLocator.appScope.launch(Dispatchers.Main) {
             if (moduleRepository.toggleModule(modulePackageName, enabled)) {
                 _uiState.value = _uiState.value.copy(isEnabled = enabled)
             } else {
