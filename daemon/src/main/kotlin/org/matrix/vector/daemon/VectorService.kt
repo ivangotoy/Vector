@@ -415,11 +415,11 @@ object VectorService : IVectorDaemon.Stub() {
             addFlags(FLAG_RECEIVER_INCLUDE_BACKGROUND or FLAG_RECEIVER_FROM_SHELL)
           }
 
-      // Send to both the parasitic manager and the standalone manager
-      listOf(BuildConfig.MANAGER_INJECTED_PKG_NAME, BuildConfig.DEFAULT_MANAGER_PACKAGE_NAME)
-          .forEach { pkg ->
-            activityManager?.broadcastIntentCompat(Intent(notifyIntent).setPackage(pkg))
-          }
+      // The parasitic manager, and the standalone manager when its signature was verified
+      // (updateManager above has already run for a change of the manager itself).
+      packageEventTargets(ConfigCache.state.managerUid != -1).forEach { pkg ->
+        activityManager?.broadcastIntentCompat(Intent(notifyIntent).setPackage(pkg))
+      }
     }
 
     // If an actual Xposed module was updated (not removed), show a system notification.
@@ -622,3 +622,14 @@ object VectorService : IVectorDaemon.Stub() {
     Log.i(TAG, "$packageName was uninstalled; it may ask for scope again if it returns")
   }
 }
+
+/**
+ * Who hears about package changes: the built-in manager, hosted in the injected package, always,
+ * and an installed manager only when its signature was verified ([ConfigCache.updateManager] keeps
+ * its uid only then). Anything else installed under the manager's package name would otherwise
+ * receive every package event, with the original intent.
+ */
+internal fun packageEventTargets(installedManagerVerified: Boolean): List<String> =
+    if (installedManagerVerified)
+        listOf(BuildConfig.MANAGER_INJECTED_PKG_NAME, BuildConfig.DEFAULT_MANAGER_PACKAGE_NAME)
+    else listOf(BuildConfig.MANAGER_INJECTED_PKG_NAME)
