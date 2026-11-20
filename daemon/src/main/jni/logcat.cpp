@@ -105,7 +105,12 @@ size_t Logcat::FastWrite(const AndroidLogEntry& entry, int fd) {
     size_t t_len = strftime(time_buf, sizeof(time_buf), "%Y-%m-%dT%H:%M:%S", &tm_info);
     int m_len = snprintf(meta_buf, sizeof(meta_buf), ".%03ld %8d:%6d:%6d %c/%-15.*s ] ",
                          entry.tv_nsec / 1000000, entry.uid, entry.pid, entry.tid,
-                         kLogChar[entry.priority], (int)entry.tagLen, entry.tag);
+                         // The priority byte is whatever the writer put there (Log.println takes
+                         // any int): only a known priority indexes the table.
+                         static_cast<unsigned>(entry.priority) < kLogChar.size()
+                             ? kLogChar[entry.priority]
+                             : '?',
+                         (int)entry.tagLen, entry.tag);
 
     // Ensure line has a trailing newline
     bool add_nl = (entry.messageLen == 0 || entry.message[entry.messageLen - 1] != '\n');
