@@ -78,7 +78,8 @@ object FrameworkService : IFrameworkService.Stub() {
 
     override fun binderDied() {
       heartBeat.unlinkToDeath(this, 0)
-      processes.remove(key)
+      // Only this registration: a later one for the same (uid, pid) has replaced it in the map.
+      processes.remove(key, this)
       ManagerService.forgetManagerPid(key.pid)
       targetIds.values.forEach { hotReloadTargets.remove(it) }
     }
