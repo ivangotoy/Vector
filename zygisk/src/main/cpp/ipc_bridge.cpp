@@ -285,8 +285,10 @@ lsplant::ScopedLocalRef<jobject> IPCBridge::RequestAppBinder(JNIEnv *env, jstrin
 
     lsplant::ScopedLocalRef<jobject> result_binder = {env, nullptr};
     if (success) {
-        // Read the reply. CRITICAL: must call readException first.
-        lsplant::JNI_CallVoidMethod(env, parcels.reply.get(), read_exception_method_);
+        // Read the reply. CRITICAL: must call readException first. Called raw, here and below:
+        // lsplant's wrappers clear any pending exception before returning, so the remote
+        // exception this call exists to report would never reach the ExceptionCheck after it.
+        env->CallVoidMethod(parcels.reply.get(), read_exception_method_);
         if (env->ExceptionCheck()) {
             LOGW("Remote exception received while requesting app binder.");
             env->ExceptionClear();
@@ -371,7 +373,7 @@ lsplant::ScopedLocalRef<jobject> IPCBridge::RequestManagerBinderFromSystemServer
 
     lsplant::ScopedLocalRef<jobject> result_binder = {env, nullptr};
     if (success) {
-        lsplant::JNI_CallVoidMethod(env, parcels.reply.get(), read_exception_method_);
+        env->CallVoidMethod(parcels.reply.get(), read_exception_method_);
         if (env->ExceptionCheck()) {
             LOGW("Remote exception while getting manager binder from system_server.");
             env->ExceptionClear();
@@ -402,7 +404,7 @@ std::tuple<int, size_t> IPCBridge::FetchFrameworkDex(JNIEnv *env, jobject binder
         return {-1, 0};
     }
 
-    lsplant::JNI_CallVoidMethod(env, parcels.reply.get(), read_exception_method_);
+    env->CallVoidMethod(parcels.reply.get(), read_exception_method_);
     if (env->ExceptionCheck()) {
         LOGE("Remote exception received while fetching DEX.");
         env->ExceptionClear();
@@ -440,7 +442,7 @@ std::map<std::string, std::string> IPCBridge::FetchObfuscationMap(JNIEnv *env, j
         return result_map;
     }
 
-    lsplant::JNI_CallVoidMethod(env, parcels.reply.get(), read_exception_method_);
+    env->CallVoidMethod(parcels.reply.get(), read_exception_method_);
     if (env->ExceptionCheck()) {
         LOGE("Remote exception received while fetching obfuscation map.");
         env->ExceptionClear();
