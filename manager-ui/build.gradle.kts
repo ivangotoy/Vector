@@ -21,6 +21,8 @@ kotlin {
 android {
     namespace = "org.matrix.vector.ui"
     buildFeatures { compose = true }
+    // android.util.Log is on the paths the host tests drive; the stub would throw instead.
+    testOptions { unitTests.isReturnDefaultValues = true }
 }
 
 dependencies {
@@ -40,4 +42,7 @@ dependencies {
     api(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.webkit)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

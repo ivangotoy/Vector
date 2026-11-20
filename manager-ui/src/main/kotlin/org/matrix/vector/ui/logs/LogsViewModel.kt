@@ -633,13 +633,15 @@ class LogsViewModel(private val source: LogSource) : ViewModel() {
 
     fun setVerbose(enabled: Boolean) {
         viewModelScope.launch {
+            // A failed write leaves both flows as they were: nothing was stored, so showing the
+            // requested value would claim a setting the host does not have.
             val actual =
                 runCatching {
                         source.setVerboseEnabled(enabled)
                     }
                     .getOrElse {
                         Log.e(TAG, "logs: setting verbose logging to $enabled failed", it)
-                        enabled
+                        return@launch
                     }
             _verboseEnabled.value = actual
             _verboseEnforced.value = !enabled && actual
