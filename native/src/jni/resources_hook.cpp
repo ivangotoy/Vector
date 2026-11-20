@@ -8,6 +8,7 @@
 #include <string>
 
 #include "common/config.h"
+#include "common/memory_probe.h"
 #include "elf/elf_image.h"
 #include "elf/symbol_cache.h"
 #include "framework/android_types.h"
@@ -235,31 +236,13 @@ VECTOR_DEF_NATIVE_METHOD(jobject, ResourcesHook, buildDummyClassLoader, jobject 
                                       lsplant::JUTFString(env, typed_array_super_class).get());
 }
 
-/**
- * @brief Reports whether the pages spanning [addr, addr + len) are mapped.
- *
- * msync on an unmapped range fails with ENOMEM, which turns a read that would raise SIGSEGV into an
- * answer. The search below walks off the end of a struct whose size it does not know, so it needs
- * one.
- *
- * hook_bridge.cpp has the same helper, also with internal linkage. Folding the two into a shared
- * header is a follow-up; both are being edited in this round.
- */
-static bool IsMapped(uintptr_t addr, size_t len) {
-    static const size_t page = static_cast<size_t>(sysconf(_SC_PAGESIZE));
-    if (page == 0) return false;
-    const uintptr_t start = addr & ~(page - 1);
-    const size_t span = ((addr + len) - start + page - 1) & ~(page - 1);
-    return msync(reinterpret_cast<void *>(start), span, MS_ASYNC) == 0;
-}
-
 // The attribute name map is the member behind the string pool, so the distance to it is
 // sizeof(ResStringPool), and that grows with almost every release: 0x80 on Android 10 and 0x130 on
 // Android 17 for LP64. The bracket has to be per ABI, because every member of that class is a word
 // and its lock is a single int on ILP32, which puts the same layout at 0x30 there - below the LP64
 // floor, so a shared floor would start the search past what it is looking for. The ceilings are set
 // so that the last slot the scan reads is still inside the ResXMLTree allocation on the newest
-// release measured: msync answers for a page, not for a malloc chunk, and a process with heap
+// release measured: IsReadable answers for a page, not for a malloc chunk, and a process with heap
 // tagging on faults on the word after the object rather than returning garbage.
 static constexpr size_t kMinMapOffset = LP_SELECT(0x20, 0x40);
 static constexpr size_t kMaxMapOffset = LP_SELECT(0xa0, 0x140);
@@ -303,12 +286,12 @@ static bool MapsCurrentAttributes(void *parser, const uint32_t *map, size_t coun
  */
 static size_t FindAttributeNameMap(void *parser, uintptr_t pool, size_t attrCount) {
     for (size_t off = kMinMapOffset; off <= kMaxMapOffset; off += sizeof(void *)) {
-        if (!IsMapped(pool + off, sizeof(void *) + sizeof(size_t))) break;
+        if (!IsReadable(pool + off, sizeof(void *) + sizeof(size_t))) break;
         auto candidate = *reinterpret_cast<uint32_t *const *>(pool + off);
         auto count = *reinterpret_cast<const size_t *>(pool + off + sizeof(void *));
         if (candidate == nullptr || count == 0 || count > kMaxMapEntries) continue;
         if (reinterpret_cast<uintptr_t>(candidate) % alignof(uint32_t) != 0) continue;
-        if (!IsMapped(reinterpret_cast<uintptr_t>(candidate), count * sizeof(uint32_t))) continue;
+        if (!IsReadable(reinterpret_cast<uintptr_t>(candidate), count * sizeof(uint32_t))) continue;
         if (!MapsCurrentAttributes(parser, candidate, count, attrCount)) continue;
         return off;
     }

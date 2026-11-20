@@ -10,6 +10,7 @@
 #include <shared_mutex>
 #include <vector>
 
+#include "common/memory_probe.h"
 #include "core/config_bridge.h"
 #include "elf/elf_image.h"
 #include "elf/symbol_cache.h"
@@ -769,15 +770,6 @@ VECTOR_DEF_NATIVE_METHOD(jboolean, HookBridge, setTrusted, jobject cookie) {
 }
 
 /**
- * @brief Reports whether the pages spanning [addr, addr + len) are mapped.
- *
- * msync on an unmapped range fails with ENOMEM, which turns a read that would raise SIGSEGV into
- * an answer, for the two readers below that work out an address instead of being handed one.
- * Defined next to the second of them.
- */
-static bool IsMapped(uintptr_t addr, size_t len);
-
-/**
  * @brief Clears ACC_FINAL on a field, so that reflection will write it again.
  *
  * Android 17 refuses every reflective write to a static final field
@@ -811,11 +803,11 @@ VECTOR_DEF_NATIVE_METHOD(jboolean, HookBridge, makeFieldWritable, jobject field,
     // `access_flags_` follows the four-byte compressed `declaring_class_` root that starts the
     // ArtField. Requiring the Java-visible flags to equal `modifiers` is what says this address is
     // an ArtField laid out the way this expects, rather than a decode that has gone wrong or a
-    // layout that has moved; and msync answers whether the address is mapped without reading it,
-    // so a candidate that is neither costs a refusal rather than the process.
+    // layout that has moved; and IsReadable answers whether the address can be read without
+    // reading it, so a candidate that is neither costs a refusal rather than the process.
     auto clear_final_at = [&](uintptr_t candidate) {
         if (candidate < kMinArtFieldAddr) return false;
-        if (!IsMapped(candidate, 2 * sizeof(uint32_t))) return false;
+        if (!IsReadable(candidate, 2 * sizeof(uint32_t))) return false;
 
         auto *art_field = reinterpret_cast<uint32_t *>(candidate);
         uint32_t flags = art_field[1];
@@ -967,14 +959,6 @@ VECTOR_DEF_NATIVE_METHOD(jobjectArray, HookBridge, legacyApiPrefixes) {
     return result;
 }
 
-static bool IsMapped(uintptr_t addr, size_t len) {
-    static const size_t page = static_cast<size_t>(sysconf(_SC_PAGESIZE));
-    if (page == 0) return false;
-    const uintptr_t start = addr & ~(page - 1);
-    const size_t span = ((addr + len) - start + page - 1) & ~(page - 1);
-    return msync(reinterpret_cast<void *>(start), span, MS_ASYNC) == 0;
-}
-
 /**
  * @brief Finds a class's static initializer without initializing the class.
  *
@@ -1049,7 +1033,7 @@ VECTOR_DEF_NATIVE_METHOD(jobject, HookBridge, findStaticInitializer, jclass targ
     }
     // The slot below the run, which may be outside the array altogether.
     const uintptr_t below = ids.front() - stride;
-    if (IsMapped(below, 2 * sizeof(uint32_t))) candidates.push_back(below);
+    if (IsReadable(below, 2 * sizeof(uint32_t))) candidates.push_back(below);
 
     // ArtMethod starts with GcRoot<mirror::Class> declaring_class_ followed by uint32_t
     // access_flags_, so both live in the first eight bytes of a slot.
