@@ -453,7 +453,7 @@ std::map<std::string, std::string> IPCBridge::FetchObfuscationMap(JNIEnv *env, j
 
     int size = lsplant::JNI_CallIntMethod(env, parcels.reply.get(), read_int_method_);
     if (size < 0 || (size % 2 != 0)) {
-        LOGE("Invalid size for obfuscation map received: %d", size);
+        LOGE("Invalid size for obfuscation map received: {}", size);
         return result_map;
     }
 
