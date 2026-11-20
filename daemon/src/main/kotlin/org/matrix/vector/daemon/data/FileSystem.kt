@@ -477,7 +477,8 @@ object FileSystem {
   }
 
   fun ensureModuleFilePath(path: String?) {
-    if (path == null || path.contains(File.separatorChar) || path == "." || path == "..") {
+    // Empty names the directory itself, which deleteRemoteFile would then remove.
+    if (path.isNullOrEmpty() || path.contains(File.separatorChar) || path == "." || path == "..") {
       throw RemoteException("Invalid path: $path")
     }
   }
