@@ -46,11 +46,12 @@ class VectorLogSource : LogSource {
         daemon.isVerboseLogEnabled().getOrDefault(false)
 
     override suspend fun setVerboseEnabled(enabled: Boolean): Boolean {
-        daemon.setVerboseLogEnabled(enabled)
+        // A daemon that cannot be reached is a failure, not an answer: the screen then keeps the
+        // switch as it was instead of showing a value nobody confirmed.
+        daemon.setVerboseLogEnabled(enabled).getOrThrow()
         // Read back what the daemon reports: an older one OR'd the preference with its own build
         // type and would refuse to move, which the screen then explains rather than hides.
-        // An unreadable answer (the daemon gone) is not reported as the value asked for.
-        return daemon.isVerboseLogEnabled().getOrDefault(!enabled)
+        return daemon.isVerboseLogEnabled().getOrThrow()
     }
 
     override val canSaveArchive: Boolean = true
