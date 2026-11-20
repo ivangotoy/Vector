@@ -965,7 +965,9 @@ class ScopeViewModel(
                                 draftScope.value.joinToString(",\n  ") {
                                     """{"packageName":"${it.packageName}","userId":${it.userId}}"""
                                 }
-                            ServiceLocator.context.contentResolver.openOutputStream(uri)?.use {
+                            // "wt": a provider need not truncate on "w", and the tail of a
+                            // longer file chosen to be overwritten would restore as targets.
+                            ServiceLocator.context.contentResolver.openOutputStream(uri, "wt")?.use {
                                 it.write("[\n  $payload\n]".toByteArray())
                             } ?: error("could not open the file")
                         }
