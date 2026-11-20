@@ -1743,10 +1743,12 @@ public final class XposedHelpers {
         byte[] temp = new byte[1024];
         int read;
 
-        while ((read = is.read(temp)) > 0) {
-            buf.write(temp, 0, read);
+        // Closed also when a read fails (an asset stream would otherwise stay open until GC).
+        try (InputStream in = is) {
+            while ((read = in.read(temp)) > 0) {
+                buf.write(temp, 0, read);
+            }
         }
-        is.close();
         return buf.toByteArray();
     }
 
