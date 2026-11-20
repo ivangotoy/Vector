@@ -173,28 +173,40 @@ inline static auto do_dlopen_hook =
 
     if (handle == nullptr) return nullptr;
 
-    std::lock_guard<std::mutex> lock(g_module_registry_mutex);
-
-    for (std::string_view module_lib : g_module_native_libs) {
-        if (HasEnding(lib_name, module_lib)) {
-            LOGI("Detected registered native module being loaded: '{}'", lib_name.c_str());
-            void *init_sym = dlsym(handle, "native_init");
-            if (init_sym == nullptr) {
-                LOGW("Library '{}' matches a module name but does not export 'native_init'.",
-                     lib_name.c_str());
+    // The registry lock is held only to read and update the lists. A module's native_init and its
+    // callbacks run without it: they may dlopen in turn, which re-enters this hook on the same
+    // thread, and the mutex is not recursive.
+    NativeInit native_init = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(g_module_registry_mutex);
+        for (std::string_view module_lib : g_module_native_libs) {
+            if (HasEnding(lib_name, module_lib)) {
+                LOGI("Detected registered native module being loaded: '{}'", lib_name.c_str());
+                void *init_sym = dlsym(handle, "native_init");
+                if (init_sym == nullptr) {
+                    LOGW("Library '{}' matches a module name but does not export 'native_init'.",
+                         lib_name.c_str());
+                    break;
+                }
+                native_init = reinterpret_cast<NativeInit>(init_sym);
                 break;
             }
-            auto native_init = reinterpret_cast<NativeInit>(init_sym);
-            if (auto callback = native_init(g_native_api_entries)) {
-                g_module_loaded_callbacks.push_back(callback);
-                LOGI("Initialized native module '{}' and registered its callback.",
-                     lib_name.c_str());
-            }
-            break;
+        }
+    }
+    if (native_init != nullptr) {
+        if (auto callback = native_init(g_native_api_entries)) {
+            std::lock_guard<std::mutex> lock(g_module_registry_mutex);
+            g_module_loaded_callbacks.push_back(callback);
+            LOGI("Initialized native module '{}' and registered its callback.", lib_name.c_str());
         }
     }
 
-    for (const auto &callback : g_module_loaded_callbacks) {
+    std::list<NativeOnModuleLoaded> callbacks;
+    {
+        std::lock_guard<std::mutex> lock(g_module_registry_mutex);
+        callbacks = g_module_loaded_callbacks;
+    }
+    for (const auto &callback : callbacks) {
         callback(name, handle);
     }
 
