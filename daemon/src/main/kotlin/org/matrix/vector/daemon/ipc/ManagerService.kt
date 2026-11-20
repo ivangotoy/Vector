@@ -337,8 +337,7 @@ object ManagerService : IManagerService.Stub() {
    */
   override fun getLiveLogPart(verbose: Boolean): ParcelFileDescriptor? {
     if (!verbose) LogcatMonitor.checkLogFile()
-    val file = if (verbose) LogcatMonitor.getVerboseLog() else LogcatMonitor.getModulesLog()
-    return file?.let { ParcelFileDescriptor.open(it, ParcelFileDescriptor.MODE_READ_ONLY) }
+    return LogcatMonitor.openLog(verbose)
   }
 
   override fun startNewLogPart(verbose: Boolean) {

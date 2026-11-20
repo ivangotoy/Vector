@@ -8,7 +8,6 @@ import android.util.Log
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
-import java.io.FileInputStream
 import java.io.IOException
 import kotlinx.coroutines.launch
 import org.matrix.vector.daemon.*
@@ -97,16 +96,15 @@ object CliSocketServer {
       // Intercept Log Streaming specifically before CliHandler
       if (request.command == "log" && request.action == "stream") {
         val verbose = request.options["verbose"] as? Boolean ?: false
-        val logFile = if (verbose) LogcatMonitor.getVerboseLog() else LogcatMonitor.getModulesLog()
+        val log = LogcatMonitor.openLog(verbose)
 
-        if (logFile != null && logFile.exists()) {
+        if (log != null) {
           val response = CliResponse(success = true, isFdAttached = true)
           writeFrame(output, VectorIPC.gson.toJson(response))
 
-          // Open file and get raw FileDescriptor
-          FileInputStream(logFile).use { fis ->
+          log.use {
             // Attach FD to the next write operation
-            socket.setFileDescriptorsForSend(arrayOf(fis.fd))
+            socket.setFileDescriptorsForSend(arrayOf(it.fileDescriptor))
             output.write(1) // Trigger byte to "carry" the ancillary FD data
           }
 

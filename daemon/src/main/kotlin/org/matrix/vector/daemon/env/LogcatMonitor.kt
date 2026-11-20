@@ -25,8 +25,17 @@ private const val FD_MODE =
         ParcelFileDescriptor.MODE_APPEND
 
 object LogcatMonitor {
-  private var modulesFd = -1
-  private var verboseFd = -1
+  // The descriptors the native reader writes to, by number. Set on the reader's thread and read on
+  // binder threads. The reader closes the old one after refreshFd returns, so these numbers are
+  // not safe to reopen: a number can already belong to another file by the time it is used.
+  @Volatile private var modulesFd = -1
+  @Volatile private var verboseFd = -1
+
+  // Our own duplicates of the same two files, which only this class closes, under [ownLock]. The
+  // live log is reopened through these, so the number cannot be reused while it is being opened.
+  private val ownLock = Any()
+  private var modulesOwn: ParcelFileDescriptor? = null
+  private var verboseOwn: ParcelFileDescriptor? = null
   @Volatile private var isRunning = false
 
   private external fun runLogcat()
@@ -105,9 +114,21 @@ object LogcatMonitor {
     }
   }
 
-  fun getVerboseLog(): File? = fdToPath(verboseFd)?.toFile()
+  /** The live log part, opened for reading, or null when there is none. */
+  fun openLog(verbose: Boolean): ParcelFileDescriptor? =
+      synchronized(ownLock) {
+        val own = (if (verbose) verboseOwn else modulesOwn) ?: return null
+        ParcelFileDescriptor.open(
+            File("/proc/self/fd/${own.fd}"), ParcelFileDescriptor.MODE_READ_ONLY)
+      }
 
-  fun getModulesLog(): File? = fdToPath(modulesFd)?.toFile()
+  private fun replaceOwn(isVerboseLog: Boolean, own: ParcelFileDescriptor?) {
+    synchronized(ownLock) {
+      val old = if (isVerboseLog) verboseOwn else modulesOwn
+      if (isVerboseLog) verboseOwn = own else modulesOwn = own
+      runCatching { old?.close() }
+    }
+  }
 
   private fun fdToPath(fd: Int) = if (fd == -1) null else Paths.get("/proc/self/fd", fd.toString())
 
@@ -168,12 +189,15 @@ object LogcatMonitor {
 
           Log.i(TAG, "New log file: $logFile")
           FileSystem.chattr0(logFile.toPath().parent)
-          val fd = ParcelFileDescriptor.open(logFile, FD_MODE).detachFd()
+          val pfd = ParcelFileDescriptor.open(logFile, FD_MODE)
+          replaceOwn(isVerboseLog, runCatching { pfd.dup() }.getOrNull())
+          val fd = pfd.detachFd()
 
           if (isVerboseLog) verboseFd = fd else modulesFd = fd
           fd
         }
         .onFailure {
+          replaceOwn(isVerboseLog, null)
           if (isVerboseLog) verboseFd = -1 else modulesFd = -1
           Log.w(TAG, "refreshFd failed", it)
         }
