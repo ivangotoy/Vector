@@ -237,13 +237,14 @@ public class XResources extends XResourcesSuperClass {
 	 * about the just created object during this particular stage, this method will return the
 	 * package name.
 	 *
-	 * <p class="warning">If you call this method outside of {@code getTopLevelResources()}, it
-	 * throws an {@code IllegalStateException}.
+	 * <p class="warning">If you call this method outside the creation of a {@code Resources} object
+	 * ({@code ResourcesManager.createResources()} and its variants, including the framework's hook
+	 * that turns the new object into an XResources), it throws an {@code IllegalStateException}.
 	 */
 	public static String getPackageNameDuringConstruction() {
 		Object key;
 		if (sLatestResKey == null || (key = sLatestResKey.get()) == null)
-			throw new IllegalStateException("This method can only be called during getTopLevelResources()");
+			throw new IllegalStateException("This method can only be called while Resources are created");
 
 		String resDir = (String) getObjectField(key, "mResDir");
 		return getPackageName(resDir);

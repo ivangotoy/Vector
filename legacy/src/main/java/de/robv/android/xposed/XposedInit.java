@@ -109,9 +109,37 @@ public final class XposedInit {
         }
 
         final Class<?> classActivityRes = XposedHelpers.findClassIfExists("android.app.ResourcesManager$ActivityResource", classGTLR.getClassLoader());
+        // Keys of creations further out on this thread, so a creation nested inside another
+        // gives the outer one its key back when it ends.
+        final ThreadLocal<java.util.ArrayDeque<Object>> outerResKeys =
+                ThreadLocal.withInitial(java.util.ArrayDeque::new);
         var hooker = new XC_MethodHook() {
+            // The key of the Resources being created, for XResources.getPackageNameDuringConstruction
+            // while the platform method and this hook run; restored to the outer creation's key (or
+            // cleared) when the hook ends, also when the creation or the hook throws.
+            @Override
+            protected void beforeHookedMethod(MethodHookParam<?> param) {
+                final int resKeyIdx = getParameterIndexByType(param.method, classResKey);
+                Object outer = latestResKey.get();
+                outerResKeys.get().push(outer != null ? outer : outerResKeys);
+                latestResKey.set(param.args[resKeyIdx]);
+            }
+
             @Override
             protected void afterHookedMethod(MethodHookParam<?> param) {
+                try {
+                    cloneIntoManager(param);
+                } finally {
+                    Object outer = outerResKeys.get().poll();
+                    if (outer == null || outer == outerResKeys) {
+                        latestResKey.remove();
+                    } else {
+                        latestResKey.set(outer);
+                    }
+                }
+            }
+
+            private void cloneIntoManager(MethodHookParam<?> param) {
                 // At least on OnePlus 5, the method has an additional parameter compared to AOSP.
                 Object activityToken = null;
                 try {
