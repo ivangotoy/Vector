@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings added by this fork, kept out of upstream's files so upstream and Crowdin updates merge
+     without conflicts. English only (translatable="false"): added after the translations were made. -->
+<resources>
+    <string name="store_confirm_source" translatable="false">Release %1$s, downloaded from %2$s.</string>
+</resources>

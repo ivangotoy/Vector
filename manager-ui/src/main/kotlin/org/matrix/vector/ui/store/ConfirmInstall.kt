@@ -23,7 +23,8 @@ import androidx.compose.ui.unit.dp
  * third-party APK with no system confirmation at all; standalone, the platform asks as usual. The
  * dialog therefore names the module, the file, its size as the catalogue declares it and the
  * package it installs as, before anything is downloaded, and says which of the two is about to
- * happen. It does not name the release version. [silent] — whether the host installs
+ * happen. It also names the release tag and the host the APK is downloaded from, which need not
+ * be the module repository's. [silent] — whether the host installs
  * without a further system prompt — is passed in rather than read here, because only the app knows
  * which mode its installer runs in.
  */
@@ -32,6 +33,7 @@ fun ConfirmInstall(
     module: OnlineModule?,
     packageName: String,
     asset: ReleaseAsset,
+    releaseTag: String?,
     silent: Boolean,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
@@ -52,6 +54,12 @@ fun ConfirmInstall(
                         packageName,
                     )
                 )
+                downloadHost(asset.downloadUrl)?.let { host ->
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        stringResource(R.string.store_confirm_source, releaseTag ?: "?", host)
+                    )
+                }
                 Spacer(Modifier.height(12.dp))
                 Text(
                     text = stringResource(R.string.store_confirm_trust),
@@ -76,3 +84,9 @@ fun ConfirmInstall(
         },
     )
 }
+
+/** The host an APK is downloaded from, as the dialog names it, or null for a URL without one. */
+internal fun downloadHost(url: String?): String? =
+    runCatching { java.net.URI(url ?: return null).host }.getOrNull()?.lowercase()?.takeIf {
+        it.isNotEmpty()
+    }

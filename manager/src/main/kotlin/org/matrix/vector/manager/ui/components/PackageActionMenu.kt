@@ -898,6 +898,7 @@ private fun ModuleUpdateSection(
             module = entry.module,
             packageName = packageName,
             asset = asset,
+            releaseTag = release?.tagName ?: release?.name,
             // Shell-mode installs commit with no further system prompt; the dialog says so.
             silent =
                 context.checkSelfPermission("android.permission.INSTALL_PACKAGES") ==

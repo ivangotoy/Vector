@@ -358,6 +358,7 @@ fun RepoDetailsScreen(
                 module = state.module,
                 packageName = packageName,
                 asset = asset,
+                releaseTag = release.tagName ?: release.name,
                 silent = installHost.silentInstall,
                 onDismiss = { confirming = null },
                 onConfirm = {
