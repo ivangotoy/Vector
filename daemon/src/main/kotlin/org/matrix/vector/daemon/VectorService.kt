@@ -305,7 +305,7 @@ object VectorService : IVectorDaemon.Stub() {
           // If it's gone for everyone, wipe the package from all users in the DB.
           // Otherwise, only wipe it for the user that just uninstalled it.
           val targetUser = if (isRemovedForAllUsers) null else userId
-          PreferenceStore.deleteModulePrefs(moduleName, userId, group = null)
+          PreferenceStore.deleteModulePrefs(moduleName, targetUser, group = null)
           // The one preference of a module that is not stored under the module. "Never ask again"
           // writes the package into a set belonging to "lspd", so the line above — which deletes
           // what is filed under the module's own name — walks straight past it, and the package
