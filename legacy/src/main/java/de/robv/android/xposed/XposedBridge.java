@@ -234,7 +234,7 @@ public final class XposedBridge {
         Set<XC_MethodHook.Unhook> unhooks = new HashSet<>();
         for (Member method : hookClass.getDeclaredMethods())
             if (method.getName().equals(methodName))
-                unhooks.add(hookMethod(method, callback));
+                addUnhook(unhooks, hookMethod(method, callback));
         return unhooks;
     }
 
@@ -249,8 +249,14 @@ public final class XposedBridge {
     public static Set<XC_MethodHook.Unhook> hookAllConstructors(Class<?> hookClass, XC_MethodHook callback) {
         Set<XC_MethodHook.Unhook> unhooks = new HashSet<>();
         for (Member constructor : hookClass.getDeclaredConstructors())
-            unhooks.add(hookMethod(constructor, callback));
+            addUnhook(unhooks, hookMethod(constructor, callback));
         return unhooks;
+    }
+
+    // hookMethod answers null for a hook that failed, and has logged it: a null in the set would
+    // only throw at whoever walks it to unhook.
+    private static void addUnhook(Set<XC_MethodHook.Unhook> unhooks, XC_MethodHook.Unhook unhook) {
+        if (unhook != null) unhooks.add(unhook);
     }
 
     /**
