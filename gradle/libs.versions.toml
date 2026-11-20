@@ -78,6 +78,8 @@ gson = { module = "com.google.code.gson:gson", version = "2.15.0" }
 libxposed-annotation = { module = "io.github.libxposed:annotation", version = "1.0.0" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+# Host JVM unit tests only (testImplementation); never packaged.
+junit = { module = "junit:junit", version = "4.13.2" }
 picocli = { module = "info.picocli:picocli", version = "4.7.7" }
 
 [bundles]

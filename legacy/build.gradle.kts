@@ -15,4 +15,5 @@ dependencies {
     implementation(projects.services.daemonService)
     compileOnly(libs.androidx.annotation)
     compileOnly(projects.hiddenapi.stubs)
+    testImplementation(libs.junit)
 }
