@@ -105,6 +105,7 @@ class DaemonClient(private val serviceState: StateFlow<IManagerService?>) {
      * activity that shows for every user must not trigger one.
      *
      * Returns false when the package has no such screen, which is an answer rather than a failure.
+     * A daemon that could not be asked is a failure, from the resolve as from the start.
      */
     suspend fun openAppUi(
         packageName: String,
@@ -113,12 +114,14 @@ class DaemonClient(private val serviceState: StateFlow<IManagerService?>) {
         companionFirst: Boolean,
     ): Result<Boolean> {
         val resolved = findAppUi(packageName, userId, companionFirst)
+        resolved.exceptionOrNull()?.let {
+            return Result.failure(it)
+        }
         val target = resolved.getOrNull()
         if (target == null) {
             logE(
                 "ipc: open resolved no activity for $packageName in user $userId " +
-                    "(companionFirst=$companionFirst)",
-                resolved.exceptionOrNull(),
+                    "(companionFirst=$companionFirst)"
             )
             return Result.success(false)
         }
