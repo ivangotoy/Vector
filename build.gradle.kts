@@ -25,19 +25,33 @@ abstract class GitCommitCountValueSource : ValueSource<String, ValueSourceParame
     @get:Inject abstract val execOperations: ExecOperations
 
     override fun obtain(): String {
+        // The count on master is the intended number (CI creates that ref). A clone without it,
+        // such as a fork whose default branch is not master, counts its own HEAD instead of
+        // falling to "1"; any other git failure still gives "1".
+        val ref =
+            if (resolves("refs/remotes/origin/master")) "refs/remotes/origin/master" else "HEAD"
         val output = ByteArrayOutputStream()
         val result = execOperations.exec {
-            commandLine("git", "rev-list", "--count", "refs/remotes/origin/master")
+            commandLine("git", "rev-list", "--count", ref)
             standardOutput = output
             isIgnoreExitValue = true
         }
-        // Return the count if successful, otherwise a default of "1".
         return if (result.exitValue == 0 && output.toString().isNotBlank()) {
             output.toString().trim()
         } else {
             "1"
         }
     }
+
+    private fun resolves(ref: String): Boolean =
+        execOperations
+            .exec {
+                commandLine("git", "rev-parse", "--verify", "--quiet", "$ref^{commit}")
+                standardOutput = ByteArrayOutputStream()
+                errorOutput = ByteArrayOutputStream()
+                isIgnoreExitValue = true
+            }
+            .exitValue == 0
 }
 
 /** A ValueSource that executes 'git tag' to get the latest version tag. */
