@@ -34,7 +34,7 @@ fun fetchStoreSubresource(
     return try {
         val httpRequest = Request.Builder().url(url.toString()).build()
         if (isLocalAddress(httpRequest.url.host)) return blocked()
-        val response = client.newCall(httpRequest).execute()
+        val response = localHopsRefused(client).newCall(httpRequest).execute()
         val type = response.body.contentType()
         if (!response.isSuccessful || type?.type != "image") {
             response.close()
@@ -46,6 +46,20 @@ fun fetchStoreSubresource(
         blocked()
     }
 }
+
+/**
+ * [client] with the [isLocalAddress] check on every hop: a redirect must not reach an address the
+ * first URL could not. A network interceptor runs once the connection is open, so a refused hop
+ * costs a TCP connect but never sends the request.
+ */
+internal fun localHopsRefused(client: OkHttpClient): OkHttpClient =
+    client
+        .newBuilder()
+        .addNetworkInterceptor { chain ->
+            if (isLocalAddress(chain.request().url.host)) throw java.io.IOException("local address refused")
+            chain.proceed(chain.request())
+        }
+        .build()
 
 /**
  * Whether [host] (as OkHttp normalised it) is an address on this device or its local network, which
