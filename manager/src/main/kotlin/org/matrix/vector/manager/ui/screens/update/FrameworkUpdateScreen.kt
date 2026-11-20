@@ -333,8 +333,8 @@ private fun UpdateBar(
                         text =
                             stringResource(
                                 R.string.update_downloading,
-                                formatSize(flash.bytes),
-                                formatSize(flash.total),
+                                formatSize(flash.bytes, currentLocale()),
+                                formatSize(flash.total, currentLocale()),
                             ),
                         style = MaterialTheme.typography.labelMedium,
                         modifier = Modifier.weight(1f),

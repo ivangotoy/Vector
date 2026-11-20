@@ -17,6 +17,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.matrix.vector.ui.R
+import org.matrix.vector.ui.locale.currentLocale
 
 /**
  * One build a release published: which variant it is, how big it is, and the name to fall back on
@@ -89,7 +90,7 @@ fun VariantPicker(
                             overflow = TextOverflow.Ellipsis,
                         )
                         Text(
-                            text = formatSize(choice.sizeInBytes),
+                            text = formatSize(choice.sizeInBytes, currentLocale()),
                             style = MaterialTheme.typography.labelSmall,
                             color = colors.onSurfaceVariant,
                         )
@@ -135,10 +136,13 @@ private fun rank(key: String): Int =
         else -> 2
     }
 
-/** Human-readable byte size, the same rendering the update UI has always used. */
-fun formatSize(bytes: Long): String =
+/**
+ * Human-readable byte size, the same rendering the update UI has always used, with the decimal
+ * separator of [locale]: the app's language, which may differ from the JVM default.
+ */
+fun formatSize(bytes: Long, locale: java.util.Locale): String =
     when {
-        bytes >= 1_048_576 -> "%.1f MB".format(bytes / 1_048_576.0)
-        bytes >= 1024 -> "%.0f kB".format(bytes / 1024.0)
+        bytes >= 1_048_576 -> String.format(locale, "%.1f MB", bytes / 1_048_576.0)
+        bytes >= 1024 -> String.format(locale, "%.0f kB", bytes / 1024.0)
         else -> "$bytes B"
     }
