@@ -48,6 +48,9 @@ public:
 
         if (!s_self_or_null_fn || !s_get_calling_pid_fn || !s_get_calling_uid_fn) {
             LOGW("Could not resolve all IPCThreadState symbols. Caller ID check will be disabled.");
+            // GetId() tests only the first pointer: one found without the others would be called
+            // through a null pointer, in system_server.
+            s_self_or_null_fn = nullptr;
         } else {
             LOGV("IPCThreadState symbols resolved successfully.");
         }
