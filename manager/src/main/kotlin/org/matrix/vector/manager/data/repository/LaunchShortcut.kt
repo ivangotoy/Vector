@@ -272,6 +272,9 @@ object LaunchShortcut {
             .onFailure { logW("actions: shortcut icon could not be rendered", it) }
             .getOrNull()
 
+    /** The receiver of the pin request still waiting for its confirmation, if any. */
+    private var pendingPin: Pair<Context, BroadcastReceiver>? = null
+
     /**
      * A one-shot receiver the platform pings once the launcher has pinned the shortcut.
      *
@@ -280,9 +283,6 @@ object LaunchShortcut {
      * and by nothing a user can install, which makes the broadcast unforgeable by a third party
      * that has guessed the action. It unregisters itself on the first matching delivery.
      */
-    /** The receiver of the pin request still waiting for its confirmation, if any. */
-    private var pendingPin: Pair<Context, BroadcastReceiver>? = null
-
     @SuppressLint("InlinedApi") // RECEIVER_EXPORTED is a constant; the flags overload is API 26.
     private fun callback(context: Context, onPinned: () -> Unit): IntentSender? =
         runCatching {

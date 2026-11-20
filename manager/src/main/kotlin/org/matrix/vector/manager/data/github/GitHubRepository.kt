@@ -807,6 +807,20 @@ class GitHubRepository(
         }
 
     /**
+     * The hex of a `sha256:` digest, which the installer then requires of the download. Any other
+     * algorithm is not checked (logged); a `sha256:` value that is not valid hex is kept, so the
+     * download fails the comparison instead of being flashed unchecked.
+     */
+    private fun sha256Of(digest: String?, asset: String): String? {
+        if (digest == null) return null
+        if (!digest.startsWith(SHA256_PREFIX, ignoreCase = true)) {
+            logW("update: $asset digest '$digest' is not sha256, not checked")
+            return null
+        }
+        return digest.substring(SHA256_PREFIX.length).lowercase()
+    }
+
+    /**
      * The build number a release represents, or null when it is not comparable with ours.
      *
      * `canary-3049` states it outright. A stable tag does not, so it is read out of the zip's file
@@ -821,20 +835,6 @@ class GitHubRepository(
      * update — a cross-product downgrade, flashed with root. Matching the [ZIP_PREFIX] asset prefix
      * is what keeps the comparison inside one numbering scheme.
      */
-    /**
-     * The hex of a `sha256:` digest, which the installer then requires of the download. Any other
-     * algorithm is not checked (logged); a `sha256:` value that is not valid hex is kept, so the
-     * download fails the comparison instead of being flashed unchecked.
-     */
-    private fun sha256Of(digest: String?, asset: String): String? {
-        if (digest == null) return null
-        if (!digest.startsWith(SHA256_PREFIX, ignoreCase = true)) {
-            logW("update: $asset digest '$digest' is not sha256, not checked")
-            return null
-        }
-        return digest.substring(SHA256_PREFIX.length).lowercase()
-    }
-
     private fun GhRelease.versionCode(): Long? {
         val ours = assets.filter { it.name.startsWith(ZIP_PREFIX, ignoreCase = true) }
         if (ours.isEmpty()) return null
