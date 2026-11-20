@@ -41,21 +41,36 @@ data class RepoDetailsState(
     val storeInstall: StoreInstall? = null,
 ) {
     /**
-     * As `StoreEntry.upgradable`, minus the mute: this page is a module the reader went looking for.
+     * The release the install bar installs: the newest one in this channel that carries an APK.
      *
-     * The note is honoured here as well, and has to be. It is the one thing that keeps this badge
-     * from disagreeing with the list that led to it — see [StoreInstall].
+     * Not necessarily [latest]. A release published without an APK is still the newest, and the
+     * bar can only install the one before it.
+     */
+    val installable: Release?
+        get() = releases.firstOrNull { it.apks.isNotEmpty() }
+
+    /** The version the bar's install would bring, which is what its label has to name. */
+    val offered: RepoVersion?
+        get() = installable?.version
+
+    /**
+     * As `StoreEntry.upgradable`, minus the mute, and judged on [offered]: this page is a module the
+     * reader went looking for, and the bar's button installs [installable], not whatever [latest]
+     * names.
+     *
+     * The note is honoured here as well, and has to be — see [StoreInstall].
      */
     val upgradable: Boolean
-        get() =
-            installed != null &&
-                latest != null &&
-                storeInstall?.satisfies(latest, installed) != true &&
-                latest.upgradableOver(installed.versionCode, installed.versionName)
+        get() {
+            val offered = offered ?: return false
+            val installed = installed ?: return false
+            return storeInstall?.satisfies(offered, installed) != true &&
+                offered.upgradableOver(installed.versionCode, installed.versionName)
+        }
 
-    /** As `StoreEntry.sameVersion`: what the bar may call the offer, not whether to make it. */
+    /** As `StoreEntry.sameVersion`, for [offered]: what the bar may call the offer. */
     val sameVersion: Boolean
-        get() = latest?.sameVersionAs(installed) == true
+        get() = offered?.sameVersionAs(installed) == true
 }
 
 /**

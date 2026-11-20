@@ -381,7 +381,7 @@ private fun InstallBar(
     onAcknowledge: () -> Unit,
 ) {
     val context = LocalContext.current
-    val newest = state.releases.firstOrNull { it.apks.isNotEmpty() } ?: return
+    val newest = state.installable ?: return
 
     Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
         Column(
@@ -472,7 +472,7 @@ private fun InstallBar(
                                         stringResource(
                                             if (state.sameVersion) UiR.string.store_badge_reinstall
                                             else UiR.string.store_badge_update,
-                                            state.latest?.versionName.orEmpty(),
+                                            state.offered?.versionName.orEmpty(),
                                         )
                                     state.installed != null ->
                                         stringResource(UiR.string.store_reinstall)
