@@ -201,6 +201,16 @@ androidComponents {
 
         zipAll.configure { dependsOn(zipTask) }
 
+        // The zip name carries the version name, which is the newest git tag, and the install task
+        // hands it to a root shell on the device. Checked when a task runs rather than at
+        // configuration, so an odd tag cannot break zipAll or a release build.
+        fun requireSafeZipName() {
+            require(Regex("[0-9A-Za-z._-]+").matches(zipFileName)) {
+                "Refusing to pass the zip name '$zipFileName' to a device shell: the version name " +
+                    "(newest git tag) may only contain letters, digits, '.', '_' and '-'."
+            }
+        }
+
         // A helper function to create installation tasks for different root providers.
         fun createInstallTasks(rootProvider: String, installCli: String) {
             val pushTask =
@@ -209,6 +219,7 @@ androidComponents {
                     description =
                         "Pushes the ${variant.name} build to the device for $rootProvider."
                     dependsOn(zipTask)
+                    doFirst { requireSafeZipName() }
                     commandLine(
                         "adb",
                         "push",
@@ -222,6 +233,7 @@ androidComponents {
                     group = "Zygisk Module Installation"
                     description = "Installs the ${variant.name} build via $rootProvider."
                     dependsOn(pushTask)
+                    doFirst { requireSafeZipName() }
                     commandLine(
                         "adb",
                         "shell",
