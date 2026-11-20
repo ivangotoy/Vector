@@ -28,7 +28,8 @@ import kotlinx.coroutines.android.awaitFrame
  *
  * Draws whichever [AmbienceRenderer] is selected and hands it taps. It sits behind the header's
  * content, so the controls above keep working normally — only the open space responds. The frame
- * loop parks itself whenever the renderer reports nothing moving, and [AmbienceKind.None] skips the
+ * loop parks itself whenever the renderer reports nothing moving; none of the current renderers
+ * ever does, so the header redraws every frame while it is shown. [AmbienceKind.None] skips the
  * loop entirely.
  *
  * Persistence of scale/speed/variant is injected via [settings]; the default keeps no state.

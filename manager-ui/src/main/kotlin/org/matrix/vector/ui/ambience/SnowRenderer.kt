@@ -128,7 +128,7 @@ class SnowRenderer : AmbienceRenderer {
             x = atX ?: (random.nextFloat() * size.width),
             y = atY,
             fullRadius = size.height * (0.018f + random.nextFloat() * 0.030f) * scale,
-            // Bigger crystals read as nearer, so they fall faster.
+            // Random and independent of the size.
             fallSpeed = 10f + random.nextFloat() * 22f,
             swayPhase = random.nextFloat() * 2f * PI.toFloat(),
             swayRate = 0.3f + random.nextFloat() * 0.6f,

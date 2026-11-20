@@ -673,14 +673,6 @@ class LogsViewModel(private val source: LogSource) : ViewModel() {
         /** How close to an edge the viewport gets before the window is extended. */
         private const val THRESHOLD = 60
 
-        /**
-         * How many writers are named per scan.
-         *
-         * The filter lists them by weight, so the ones past this wrote a handful of lines each. They still appear, as
-         * their uid, and are still selectable; what they no longer do is make every scan pay to name them.
-         */
-        private const val MAX_NAMED_WRITERS = 48
-
         private const val QUERY_DEBOUNCE_MS = 250L
 
         private const val PROGRESS_STEP = 0.02f

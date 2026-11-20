@@ -13,8 +13,8 @@ package org.matrix.vector.ui.store
  *
  * A pure String mapping with no app dependencies, kept here so the shared Details screen can put a
  * catalogue's legacy-vocabulary scope on screen beside the installed copy's already-swapped list
- * without either app's module detection. (Vector's `ModuleDetection` keeps its own copy for the APK
- * read; this one is the store's.)
+ * without either app's module detection. (`ModuleDetection` in this library keeps its own copy for
+ * the APK read; this one is the store's.)
  */
 fun swapLegacyFrameworkNames(scope: List<String>): List<String> =
     scope.map {

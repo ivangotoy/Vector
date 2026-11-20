@@ -84,7 +84,7 @@ private fun currentLocale(): Locale = LocalConfiguration.current.locales[0]
  * before anyone scrolls. Everything after that is browsing.
  *
  * Backend-agnostic: the host supplies the catalogue and settings through [dataSource]/[settings],
- * so Vector's daemon+OkHttp and LSPatch's Shizuku+HttpURLConnection drive the same screen.
+ * so Vector's and LSPatch's backends drive the same screen.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
