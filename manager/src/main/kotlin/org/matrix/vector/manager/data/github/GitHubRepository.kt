@@ -114,9 +114,7 @@ class GitHubRepository(
             // across sessions. The line under the feed says how far back the answer actually
             // reaches, rather than claiming the project began there.
             val months = windowMonthsProvider().coerceIn(0, 60)
-            val windowStart =
-                if (months == 0) 0L
-                else System.currentTimeMillis() / 1000 - months * DAYS_PER_MONTH * 24L * 60 * 60
+            val windowStart = windowStart(System.currentTimeMillis() / 1000, months)
             // One read, however this call ends. The same text answers two questions — which fields
             // a successful fetch could not supply, and what to render when there was no fetch at
             // all — and re-reading it for the second would be a second pass over the file for an
@@ -1008,6 +1006,23 @@ class GitHubRepository(
 
         /** The window is a rough reach backwards, not a calendar, so a flat month will do. */
         private const val DAYS_PER_MONTH = 30L
+
+        private const val SECONDS_PER_DAY = 24L * 60 * 60
+
+        /**
+         * Where the feed window starts, in epoch seconds: [months] back from [nowSeconds], rounded
+         * down to midnight UTC, or 0 for "as far back as there is".
+         *
+         * Rounded because it is part of the request URL (`since=`) and the HTTP cache is keyed by
+         * URL. A start that moved every second made every load a new URL, so [Freshness.Revalidate]
+         * never found a cached answer or an ETag to send, and each load cost a request from the
+         * anonymous rate limit. Within one UTC day the URL is now the same.
+         */
+        internal fun windowStart(nowSeconds: Long, months: Int): Long {
+            if (months <= 0) return 0L
+            val start = nowSeconds - months * DAYS_PER_MONTH * SECONDS_PER_DAY
+            return start - Math.floorMod(start, SECONDS_PER_DAY)
+        }
 
         /** How long a fetched answer is served without asking GitHub anything; see [Freshness]. */
         private const val REVALIDATE_MINUTES = 30L
