@@ -515,6 +515,10 @@ class ModuleAppService(private val loadedModule: LoadedModule) : IXposedService.
    */
   override fun requestScope(packages: List<String>, callback: IXposedScopeCallback) {
     val userId = ensureModule()
+    packages.firstOrNull { !isScopeTargetName(it) }?.let {
+      callback.onScopeRequestFailed("Not a package name: $it")
+      return
+    }
     val requested = packages.distinct().sorted()
     if (requested.isEmpty()) {
       // Nothing was asked for, so the request is trivially satisfied. Returning without touching
