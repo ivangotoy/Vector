@@ -14,6 +14,9 @@ package de.robv.android.xposed;
 public interface IXposedHookZygoteInit extends IXposedMod {
     /**
      * Called very early during startup of Zygote.
+     *
+     * <p>In Vector, this runs in each process a module is loaded into, after the process has been
+     * specialized from Zygote and before the app's own code is loaded, not once in Zygote itself.
      * @param startupParam Details about the module itself and the started process.
      * @throws Throwable everything is caught, but will prevent further initialization of the module.
      */
@@ -27,8 +30,8 @@ public interface IXposedHookZygoteInit extends IXposedMod {
         public String modulePath;
 
         /**
-         * Always {@code true} on 32-bit ROMs. On 64-bit, it's only {@code true} for the primary
-         * process that starts the system_server.
+         * In Vector, {@code true} only inside system_server itself, the process this call then
+         * runs in.
          */
         public boolean startsSystemServer;
     }

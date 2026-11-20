@@ -36,8 +36,9 @@ import de.robv.android.xposed.services.FileResult;
 
 /**
  * This class is basically the same as SharedPreferencesImpl from AOSP, but
- * read-only and without listeners support. Instead, it is made to be
- * compatible with all ROMs.
+ * read-only. Instead, it is made to be compatible with all ROMs. Listeners
+ * are supported through a watch on the file's directory, see
+ * {@link #registerOnSharedPreferenceChangeListener}.
  */
 public final class XSharedPreferences implements SharedPreferences {
     private static final String TAG = "XSharedPreferences";

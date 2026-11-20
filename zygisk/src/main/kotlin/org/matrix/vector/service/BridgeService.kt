@@ -45,7 +45,7 @@ object BridgeService {
      */
     private class DaemonDeathRecipient(private val binder: IBinder) : DeathRecipient {
         override fun binderDied() {
-            Log.e(TAG, "Vector daemin service died.")
+            Log.e(TAG, "Vector daemon service died.")
             synchronized(lock) {
                 runCatching { binder.unlinkToDeath(this, 0) }
                 if (serviceBinder === binder) {
@@ -57,11 +57,11 @@ object BridgeService {
         }
     }
 
-    /** Returns the active Vector daemin service interface. */
+    /** Returns the active Vector daemon service interface. */
     @JvmStatic fun getService(): IVectorDaemon? = service
 
     /**
-     * Initializes the client-side connection to the Vector daemin service.
+     * Initializes the client-side connection to the Vector daemon service.
      *
      * @param binder The raw binder for [IVectorDaemon].
      */
@@ -102,7 +102,7 @@ object BridgeService {
             }
             .onFailure { Log.e(TAG, "Failed to dispatch system context", it) }
 
-        Log.i(TAG, "Vector daemin service binder linked.")
+        Log.i(TAG, "Vector daemon service binder linked.")
     }
 
     /** Handles manual parcel transactions. Called via reflection/JNI from the native hook. */
@@ -150,7 +150,7 @@ object BridgeService {
     }
 
     /**
-     * Entry point for the JNI hook in [IPCBridge.cpp].
+     * Entry point for the JNI hook in ipc_bridge.cpp.
      *
      * @param obj The Binder object being called.
      * @param code The transaction code.

@@ -80,7 +80,9 @@ public final class AndroidAppHelper {
 	}
 
 	/**
-	 * Returns the name of the current process. It's usually the same as the main package name.
+	 * Returns the package name of the current process's main application, or {@code "android"}
+	 * when there is none. Despite the method's name, this is not the process
+	 * name, which can differ for apps that declare {@code android:process}.
 	 */
 	public static String currentProcessName() {
 		String processName = ActivityThread.currentPackageName();

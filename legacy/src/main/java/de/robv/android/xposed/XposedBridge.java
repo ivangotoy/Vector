@@ -33,10 +33,11 @@ import io.github.libxposed.api.XposedInterface;
  */
 public final class XposedBridge {
     /**
-     * The system class loader which can be used to locate Android framework classes.
-     * Application classes cannot be retrieved from it.
+     * A class loader which can be used to locate Android framework classes. Application classes
+     * cannot be retrieved from it.
      *
-     * @see ClassLoader#getSystemClassLoader
+     * <p>In Vector this is the loader of the framework's own classes, whose parents reach the
+     * Android framework: classes of Vector itself are visible through it as well.
      */
     public static final ClassLoader BOOTCLASSLOADER = XposedBridge.class.getClassLoader();
 
