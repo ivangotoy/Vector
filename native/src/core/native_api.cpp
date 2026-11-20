@@ -103,12 +103,14 @@ const NativeAPIEntries *g_native_api_entries = nullptr;
 
 /**
  * @brief Initializes the Native API entries struct and makes it read-only.
+ *
+ * @return false when the page could not be allocated, which leaves no entries to hand a module.
  */
-void InitializeApiEntries() {
+bool InitializeApiEntries() {
+    // The deleter skips MAP_FAILED, so a failed page needs no further handling here.
     if (g_api_page.get() == MAP_FAILED) {
         LOGF("Failed to allocate memory for native API entries.");
-        LOGD("Release the memory page pointer %p", g_api_page.release());
-        return;
+        return false;
     }
     auto *entries = new (g_api_page.get()) NativeAPIEntries{
         .version = 2,
@@ -120,11 +122,14 @@ void InitializeApiEntries() {
     }
     g_native_api_entries = entries;
     LOGI("Native API entries initialized and protected.");
+    return true;
 }
 
 void RegisterNativeLib(const std::string &library_name) {
     static bool is_initialized = []() {
-        InitializeApiEntries();
+        // Without the entries native_init would be called with nullptr, so the dlopen hook is
+        // not installed either.
+        if (!InitializeApiEntries()) return false;
         return InstallNativeAPI(lsplant::InitInfo{
             .inline_hooker =
                 [](void *target, void *replacement) {
