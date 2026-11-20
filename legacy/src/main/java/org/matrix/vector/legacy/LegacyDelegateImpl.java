@@ -110,11 +110,15 @@ public class LegacyDelegateImpl implements LegacyFrameworkDelegate {
         }
     }
 
-    private void hookNewXSP(XC_LoadPackage.LoadPackageParam lpparam) {
+    /**
+     * Whether the module's manifest asks for the new XSharedPreferences: xposedminversion above 92,
+     * or xposedsharedprefs. A manifest that cannot be read asks for nothing.
+     */
+    static boolean usesNewXSharedPreferences(File apk) {
         int xposedminversion = -1;
         boolean xposedsharedprefs = false;
         try {
-            Map<String, Object> metaData = VectorMetaDataReader.getMetaData(new File(lpparam.appInfo.sourceDir));
+            Map<String, Object> metaData = VectorMetaDataReader.getMetaData(apk);
             Object minVersionRaw = metaData.get("xposedminversion");
             if (minVersionRaw instanceof Integer) {
                 xposedminversion = (Integer) minVersionRaw;
@@ -122,10 +126,16 @@ public class LegacyDelegateImpl implements LegacyFrameworkDelegate {
                 xposedminversion = VectorMetaDataReader.extractIntPart((String) minVersionRaw);
             }
             xposedsharedprefs = metaData.containsKey("xposedsharedprefs");
-        } catch (NumberFormatException | IOException ignored) {
+        } catch (IOException | RuntimeException ignored) {
+            // RuntimeException, not just NumberFormatException: an APK without a manifest or with
+            // a malformed one throws others, and out of onPackageLoaded they would skip every
+            // legacy module's handleLoadPackage in this process.
         }
+        return xposedminversion > 92 || xposedsharedprefs;
+    }
 
-        if (xposedminversion > 92 || xposedsharedprefs) {
+    private void hookNewXSP(XC_LoadPackage.LoadPackageParam lpparam) {
+        if (usesNewXSharedPreferences(new File(lpparam.appInfo.sourceDir))) {
             XposedHelpers.findAndHookMethod("android.app.ContextImpl", lpparam.classLoader, "checkMode", int.class, new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) {
