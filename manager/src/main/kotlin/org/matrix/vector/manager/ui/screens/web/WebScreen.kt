@@ -37,6 +37,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -272,14 +273,21 @@ fun WebScreen(url: String, onNavigateBack: () -> Unit) {
                 )
             }
             Box(Modifier.fillMaxSize()) {
-                AndroidView(
-                    factory = { webView },
-                    modifier = Modifier.fillMaxSize(),
-                    onRelease = { view ->
-                        view.stopLoading()
-                        view.destroy()
-                    },
-                )
+                // Keyed on the instance: `webView` is rebuilt when the theme flips, and an
+                // AndroidView keeps the view its factory first returned. Without the key the old
+                // page stayed on screen while Back and Open in browser acted on the new, unattached
+                // one, which was never destroyed. With it the old view is released and the new one
+                // attached.
+                key(webView) {
+                    AndroidView(
+                        factory = { webView },
+                        modifier = Modifier.fillMaxSize(),
+                        onRelease = { view ->
+                            view.stopLoading()
+                            view.destroy()
+                        },
+                    )
+                }
             }
         }
     }
