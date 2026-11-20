@@ -114,6 +114,12 @@ fun WebScreen(url: String, onNavigateBack: () -> Unit) {
                 settings.loadWithOverviewMode = true
                 settings.builtInZoomControls = true
                 settings.displayZoomControls = false
+                // Neither file: nor content: has any business in a page from the web, and the
+                // defaults are not ours to rely on: file access defaults on for a target below 30,
+                // and parasitically the target is the host's, while content access defaults on
+                // everywhere.
+                settings.allowFileAccess = false
+                settings.allowContentAccess = false
 
                 if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
                     // Only reaches content that defines no dark styles of its own; GitHub does, and
