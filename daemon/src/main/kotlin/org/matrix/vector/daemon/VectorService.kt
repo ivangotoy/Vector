@@ -565,7 +565,11 @@ object VectorService : IVectorDaemon.Stub() {
               // table once per package — leaving a window after each in which the scope is only
               // partly what was agreed to — and writing unconditionally would let a module enable
               // itself by asking again for what it has.
-              if (added) ModuleDatabase.setModuleScope(packageName, scopes)
+              if (added && !ModuleDatabase.setModuleScope(packageName, scopes)) {
+                // Refused (a static scope, a failed write): the module must not hear "approved".
+                iCallback.onScopeRequestFailed("Scope could not be saved")
+                return@runCatching
+              }
               Log.i(TAG, "Approved ${granted.joinToString()} for $packageName on user $userId")
               // The packages that were granted, which is what the list in this callback is for. A
               // module comparing it against what it asked for can see what it did not get.
