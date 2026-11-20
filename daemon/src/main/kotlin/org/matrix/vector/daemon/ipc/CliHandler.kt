@@ -223,7 +223,7 @@ object CliHandler {
         // VACUUM INTO creates a consistent, defragmented copy without long-term locking.
         try {
           ModuleDatabase.dbHelper.writableDatabase.execSQL(
-              "VACUUM INTO '${path.replace("'", "''")}'")
+              "VACUUM INTO ${sqlStringLiteral(path)}")
         } catch (e: android.database.sqlite.SQLiteException) {
           // VACUUM INTO needs SQLite 3.27; an older platform SQLite rejects it as a syntax error.
           // Anything else is a real failure and is reported as one.
@@ -336,3 +336,6 @@ object CliHandler {
     }
   }
 }
+
+/** [text] as an SQL string literal: quoted, each quote inside doubled. */
+internal fun sqlStringLiteral(text: String): String = "'" + text.replace("'", "''") + "'"

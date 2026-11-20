@@ -335,9 +335,10 @@ class ConfigCommand {
 }
 
 /** The daemon runs in the module directory, so a relative path is resolved here, in the caller's. */
-private fun absolutePath(path: String): String =
-    if (path.startsWith("/")) path
-    else java.io.File(android.system.Os.readlink("/proc/self/cwd"), path).path
+internal fun absolutePath(
+    path: String,
+    cwd: () -> String = { android.system.Os.readlink("/proc/self/cwd") },
+): String = if (path.startsWith("/")) path else java.io.File(cwd(), path).path
 
 @Command(name = "db", description = ["Database maintenance"])
 class DatabaseCommand {
