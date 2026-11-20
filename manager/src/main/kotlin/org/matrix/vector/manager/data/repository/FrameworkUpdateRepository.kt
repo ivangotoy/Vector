@@ -33,14 +33,31 @@ class FrameworkUpdateRepository(private val github: GitHubRepository) {
     private val _state = MutableStateFlow(FrameworkUpdateState())
     val state: StateFlow<FrameworkUpdateState> = _state.asStateFlow()
 
+    /** Works out the update state for [installedVersionCode] and publishes it as [state]. */
     suspend fun refresh(
         installedVersionCode: Long,
         installedCommit: String? = null,
         freshness: GitHubRepository.Freshness = GitHubRepository.Freshness.Revalidate,
     ) {
-        if (installedVersionCode <= 0) return
+        evaluate(installedVersionCode, installedCommit, freshness)?.let { _state.value = it }
+    }
+
+    /**
+     * The state [refresh] would publish, without publishing it; null when there is nothing to say.
+     *
+     * For a caller laying releases out against a version that is not the installed framework's,
+     * such as the canary list falling back to the manager's own version when the daemon does not
+     * answer. Published, that number would stand as the installed framework on every screen that
+     * reads [state], and nothing would replace it until the daemon answered.
+     */
+    suspend fun evaluate(
+        installedVersionCode: Long,
+        installedCommit: String? = null,
+        freshness: GitHubRepository.Freshness = GitHubRepository.Freshness.Revalidate,
+    ): FrameworkUpdateState? {
+        if (installedVersionCode <= 0) return null
         val releases = github.frameworkReleases(freshness)
-        if (releases.isEmpty()) return
+        if (releases.isEmpty()) return null
 
         val newestStable = releases.firstOrNull { !it.isCanary }
         val onCanary =
@@ -50,19 +67,18 @@ class FrameworkUpdateRepository(private val github: GitHubRepository) {
         // A canary reader is offered whichever is newer; a release reader is offered no canary.
         val newest = releases.filter { onCanary || !it.isCanary }.maxByOrNull { it.versionCode }
 
-        _state.value =
-            FrameworkUpdateState(
-                installedVersionCode = installedVersionCode,
-                installedCommit = installedCommit,
-                available = newest?.takeIf { it.versionCode > installedVersionCode },
-                // Every published build, not only the newest and not only this channel's: the same
-                // list that answers "is there anything newer" also answers "what could I go back
-                // to" — a question people ask after a build breaks something for them — and "which
-                // build was that row on the canary page", which is a question only the other
-                // channel can answer.
-                catalog = releases.sortedByDescending { it.versionCode },
-                onCanary = onCanary,
-            )
+        return FrameworkUpdateState(
+            installedVersionCode = installedVersionCode,
+            installedCommit = installedCommit,
+            available = newest?.takeIf { it.versionCode > installedVersionCode },
+            // Every published build, not only the newest and not only this channel's: the same
+            // list that answers "is there anything newer" also answers "what could I go back
+            // to" — a question people ask after a build breaks something for them — and "which
+            // build was that row on the canary page", which is a question only the other
+            // channel can answer.
+            catalog = releases.sortedByDescending { it.versionCode },
+            onCanary = onCanary,
+        )
     }
 }
 

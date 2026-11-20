@@ -16,6 +16,7 @@ import org.matrix.vector.manager.data.github.CommunityFeed
 import org.matrix.vector.manager.data.github.GitHubRepository
 import org.matrix.vector.manager.data.repository.CanaryBoard
 import org.matrix.vector.manager.data.repository.CanaryLayout
+import org.matrix.vector.manager.data.repository.FrameworkUpdateState
 import org.matrix.vector.manager.di.ServiceLocator
 import org.matrix.vector.manager.logW
 
@@ -44,8 +45,17 @@ class CanaryViewModel : ViewModel() {
      */
     private val attempted = MutableStateFlow(false)
 
+    /**
+     * The releases laid out against this manager's own version, when the framework did not report
+     * its own. Kept here rather than published to the shared update state, which every other screen
+     * reads as the installed framework's.
+     */
+    private val fallback = MutableStateFlow<FrameworkUpdateState?>(null)
+
+    private val update = combine(updates.state, fallback) { shared, local -> local ?: shared }
+
     val board: StateFlow<CanaryBoard> =
-        combine(feed, updates.state, closed, attempted) { commits, state, issues, asked ->
+        combine(feed, update, closed, attempted) { commits, state, issues, asked ->
                 CanaryLayout.build(commits, state, issues, asked)
             }
             // Off the main thread for the same reason the rail is: laying this out is a pass over
@@ -60,15 +70,13 @@ class CanaryViewModel : ViewModel() {
             // build among the canaries correctly — and the fallback matters more here than
             // anywhere else, because a reader whose framework is not answering is exactly the
             // reader who has come looking for a build that works.
-            val installed =
-                daemon
-                    .getFrameworkVersionCode()
-                    .getOrElse { e ->
-                        logW("canary: framework version unavailable, using the manager's own", e)
-                        0L
-                    }
-                    .takeIf { it > 0 } ?: BuildConfig.VERSION_CODE.toLong()
-            updates.refresh(installed, daemon.getBuildStamp().getOrNull())
+            val framework =
+                daemon.getFrameworkVersionCode().getOrElse { e ->
+                    logW("canary: framework version unavailable, using the manager's own", e)
+                    0L
+                }
+            if (framework > 0) updates.refresh(framework, daemon.getBuildStamp().getOrNull())
+            else fallback.value = updates.evaluate(BuildConfig.VERSION_CODE.toLong())
             attempted.value = true
         }
         viewModelScope.launch {
