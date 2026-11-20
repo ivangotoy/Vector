@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings added by this fork, kept out of upstream's strings.xml so upstream and Crowdin
+     updates to that file merge without conflicts. -->
+<resources>
+    <string name="modules_backup_partial">Сохранено модулей: %1$d, но область действия %2$s прочитать не удалось, она сохранена пустой.</string>
+    <string name="scope_restore_empty">В этом файле нет записей области действия. Область действия оставлена без изменений.</string>
+</resources>

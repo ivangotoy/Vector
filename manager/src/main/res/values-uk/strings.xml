@@ -113,7 +113,6 @@
     <string name="modules_restore">Відновити модулі</string>
     <string name="modules_backup_done">Збережено %1$d модулів та їхні області дії.</string>
     <string name="modules_backup_failed">Не вдалося записати копію.</string>
-    <string name="modules_backup_partial">Збережено %1$d модулів, але область дії %2$s не вдалося прочитати, її збережено порожньою.</string>
     <string name="modules_restore_done">Відновлено %1$d модулів, пропущено %2$d, яких тут немає.</string>
     <string name="modules_restore_failed">Не вдалося прочитати цю копію.</string>
     <string name="modules_search_hint">Пошук модулів</string>
@@ -162,7 +161,6 @@
     <string name="scope_clear_visible">Зняти вибір з усього показаного</string>
     <string name="scope_backup_done">Область дії збережено.</string>
     <string name="scope_backup_failed">Не вдалося прочитати або записати цей файл.</string>
-    <string name="scope_restore_empty">У цьому файлі немає записів області дії. Область дії залишено без змін.</string>
     <string name="scope_select">Вибір</string>
     <string name="scope_sort">Сортування</string>
     <string name="scope_modules">Інші модулі</string>

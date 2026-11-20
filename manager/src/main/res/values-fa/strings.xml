@@ -103,7 +103,6 @@
     <string name="modules_restore">بازگردانی ماژول‌ها</string>
     <string name="modules_backup_done">از %1$d ماژول و دامنه‌شان پشتیبان گرفته شد.</string>
     <string name="modules_backup_failed">نوشتن پشتیبان ممکن نشد.</string>
-    <string name="modules_backup_partial">از %1$d ماژول پشتیبان گرفته شد، اما دامنهٔ %2$s خوانده نشد و خالی ذخیره شد.</string>
     <string name="modules_restore_done">%1$d ماژول بازگردانده شد؛ %2$d مورد که اینجا نصب نیست نادیده گرفته شد.</string>
     <string name="modules_restore_failed">خواندن آن پشتیبان ممکن نشد.</string>
     <string name="modules_search_hint">جستجوی ماژول</string>
@@ -150,7 +149,6 @@
     <string name="scope_clear_visible">برداشتن گزینش همهٔ موارد نمایان</string>
     <string name="scope_backup_done">دامنه ذخیره شد.</string>
     <string name="scope_backup_failed">خواندن یا نوشتن آن پرونده ممکن نشد.</string>
-    <string name="scope_restore_empty">این پرونده هیچ مورد دامنه‌ای ندارد. دامنه همان‌طور که بود باقی ماند.</string>
     <string name="scope_select">گزینش</string>
     <string name="scope_sort">چینش</string>
     <string name="scope_modules">ماژول‌های دیگر</string>

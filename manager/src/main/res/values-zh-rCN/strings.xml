@@ -98,7 +98,6 @@
     <string name="modules_restore">恢复模块</string>
     <string name="modules_backup_done">已备份 %1$d 个模块及其作用域。</string>
     <string name="modules_backup_failed">无法写入备份文件。</string>
-    <string name="modules_backup_partial">已备份 %1$d 个模块，但无法读取 %2$s 的作用域，已保存为空。</string>
     <string name="modules_restore_done">已恢复 %1$d 个模块，跳过 %2$d 个本机未安装的模块。</string>
     <string name="modules_restore_failed">无法读取该备份文件。</string>
     <string name="modules_search_hint">搜索模块</string>
@@ -144,7 +143,6 @@
     <string name="scope_clear_visible">取消当前显示的全部</string>
     <string name="scope_backup_done">作用域已保存。</string>
     <string name="scope_backup_failed">无法读取或写入该文件。</string>
-    <string name="scope_restore_empty">此文件中没有作用域条目。作用域保持不变。</string>
     <string name="scope_select">选择</string>
     <string name="scope_sort">排序</string>
     <string name="scope_modules">其他模块</string>

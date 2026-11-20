@@ -117,7 +117,6 @@
     <string name="modules_restore">שחזור המודולים</string>
     <string name="modules_backup_done">גובו %1$d מודולים והתחומים שלהם.</string>
     <string name="modules_backup_failed">לא ניתן היה לכתוב את הגיבוי.</string>
-    <string name="modules_backup_partial">גובו %1$d מודולים, אבל לא ניתן היה לקרוא את התחום של %2$s והוא נשמר ריק.</string>
     <string name="modules_restore_done">שוחזרו %1$d מודולים, %2$d דולגו כי אינם מותקנים כאן.</string>
     <string name="modules_restore_failed">לא ניתן היה לקרוא את הגיבוי הזה.</string>
     <string name="modules_search_hint">חיפוש מודולים</string>
@@ -166,7 +165,6 @@
     <string name="scope_clear_visible">ביטול הבחירה בכל מה שמוצג</string>
     <string name="scope_backup_done">התחום נשמר.</string>
     <string name="scope_backup_failed">לא ניתן היה לקרוא או לכתוב את הקובץ הזה.</string>
-    <string name="scope_restore_empty">בקובץ הזה אין רשומות תחום. התחום נשאר כפי שהיה.</string>
     <string name="scope_select">בחירה</string>
     <string name="scope_sort">מיון</string>
     <string name="scope_modules">מודולים אחרים</string>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings added by this fork, kept out of upstream's strings.xml so upstream and Crowdin
+     updates to that file merge without conflicts. -->
+<resources>
+    <string name="modules_backup_partial">%1$d modules sauvegardés, mais la portée de %2$s n\'a pas pu être lue et a été enregistrée vide.</string>
+    <string name="scope_restore_empty">Ce fichier ne contient aucune entrée de portée. La portée est restée inchangée.</string>
+</resources>

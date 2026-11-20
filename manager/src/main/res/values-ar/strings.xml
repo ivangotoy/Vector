@@ -123,7 +123,6 @@
     <string name="modules_restore">استعادة الوحدات</string>
     <string name="modules_backup_done">نُسخت %1$d وحدة ونطاقاتها.</string>
     <string name="modules_backup_failed">تعذّرت كتابة النسخة الاحتياطية.</string>
-    <string name="modules_backup_partial">نُسخت %1$d وحدة، لكن تعذّرت قراءة نطاق %2$s فحُفظ فارغًا.</string>
     <string name="modules_restore_done">استُعيدت %1$d وحدة، وتُخطّيت %2$d غير مثبّتة هنا.</string>
     <string name="modules_restore_failed">تعذّرت قراءة تلك النسخة الاحتياطية.</string>
     <string name="modules_search_hint">ابحث في الوحدات</string>
@@ -174,7 +173,6 @@
     <string name="scope_clear_visible">إلغاء تحديد كل ما هو ظاهر</string>
     <string name="scope_backup_done">حُفظ النطاق.</string>
     <string name="scope_backup_failed">تعذّرت قراءة ذلك الملف أو كتابته.</string>
-    <string name="scope_restore_empty">لا يحتوي هذا الملف على أي إدخالات نطاق. بقي النطاق كما هو.</string>
     <string name="scope_select">التحديد</string>
     <string name="scope_sort">الترتيب</string>
     <string name="scope_modules">وحدات أخرى</string>

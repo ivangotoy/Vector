@@ -102,7 +102,6 @@
     <string name="modules_restore">Pulihkan modul</string>
     <string name="modules_backup_done">%1$d modul dan cakupannya telah dicadangkan.</string>
     <string name="modules_backup_failed">Cadangan tidak bisa ditulis.</string>
-    <string name="modules_backup_partial">%1$d modul telah dicadangkan, tetapi cakupan %2$s tidak bisa dibaca dan disimpan kosong.</string>
     <string name="modules_restore_done">%1$d modul dipulihkan, %2$d dilewati karena tidak terpasang di sini.</string>
     <string name="modules_restore_failed">Cadangan itu tidak bisa dibaca.</string>
     <string name="modules_search_hint">Cari modul</string>
@@ -148,7 +147,6 @@
     <string name="scope_clear_visible">Batalkan pilihan semua yang tampil</string>
     <string name="scope_backup_done">Cakupan disimpan.</string>
     <string name="scope_backup_failed">Berkas itu tidak bisa dibaca atau ditulis.</string>
-    <string name="scope_restore_empty">Berkas ini tidak berisi entri cakupan. Cakupan dibiarkan seperti semula.</string>
     <string name="scope_select">Pilihan</string>
     <string name="scope_sort">Urutkan</string>
     <string name="scope_modules">Modul lain</string>

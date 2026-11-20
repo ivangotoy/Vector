@@ -103,7 +103,6 @@
     <string name="modules_restore">Module wiederherstellen</string>
     <string name="modules_backup_done">%1$d Module und ihre Geltungsbereiche gesichert.</string>
     <string name="modules_backup_failed">Die Sicherung konnte nicht geschrieben werden.</string>
-    <string name="modules_backup_partial">%1$d Module gesichert, aber der Geltungsbereich von %2$s konnte nicht gelesen werden und wurde leer gespeichert.</string>
     <string name="modules_restore_done">%1$d Module wiederhergestellt, %2$d übersprungen, die hier nicht installiert sind.</string>
     <string name="modules_restore_failed">Diese Sicherung konnte nicht gelesen werden.</string>
     <string name="modules_search_hint">Module durchsuchen</string>
@@ -150,7 +149,6 @@
     <string name="scope_clear_visible">Auswahl für alles Angezeigte aufheben</string>
     <string name="scope_backup_done">Geltungsbereich gespeichert.</string>
     <string name="scope_backup_failed">Diese Datei konnte nicht gelesen oder geschrieben werden.</string>
-    <string name="scope_restore_empty">Diese Datei enthält keine Einträge für den Geltungsbereich. Der Geltungsbereich bleibt unverändert.</string>
     <string name="scope_select">Auswahl</string>
     <string name="scope_sort">Sortieren</string>
     <string name="scope_modules">Andere Module</string>

@@ -103,7 +103,6 @@
     <string name="modules_restore">Restaurar módulos</string>
     <string name="modules_backup_done">Se guardaron %1$d módulos y sus ámbitos.</string>
     <string name="modules_backup_failed">No se pudo escribir la copia.</string>
-    <string name="modules_backup_partial">Se guardaron %1$d módulos, pero no se pudo leer el ámbito de %2$s y se guardó vacío.</string>
     <string name="modules_restore_done">Se restauraron %1$d módulos; se omitieron %2$d que no están instalados aquí.</string>
     <string name="modules_restore_failed">No se pudo leer esa copia.</string>
     <string name="modules_search_hint">Buscar módulos</string>
@@ -150,7 +149,6 @@
     <string name="scope_clear_visible">Deseleccionar todo lo que se muestra</string>
     <string name="scope_backup_done">Ámbito guardado.</string>
     <string name="scope_backup_failed">No se pudo leer ni escribir ese archivo.</string>
-    <string name="scope_restore_empty">Este archivo no tiene entradas de ámbito. El ámbito se ha dejado como estaba.</string>
     <string name="scope_select">Selección</string>
     <string name="scope_sort">Ordenar</string>
     <string name="scope_modules">Otros módulos</string>

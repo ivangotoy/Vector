@@ -98,7 +98,6 @@
     <string name="modules_restore">モジュールを復元</string>
     <string name="modules_backup_done">%1$d 個のモジュールとその適用範囲をバックアップしました。</string>
     <string name="modules_backup_failed">バックアップを書き込めませんでした。</string>
-    <string name="modules_backup_partial">%1$d 個のモジュールをバックアップしましたが、%2$s の適用範囲を読み取れなかったため空で保存しました。</string>
     <string name="modules_restore_done">%1$d 個のモジュールを復元しました。このデバイスにはインストールされていない %2$d 個のモジュールはスキップされました。</string>
     <string name="modules_restore_failed">そのバックアップを読み込めませんでした。</string>
     <string name="modules_search_hint">モジュールを検索</string>
@@ -144,7 +143,6 @@
     <string name="scope_clear_visible">表示中のすべてを解除</string>
     <string name="scope_backup_done">適用範囲を保存しました。</string>
     <string name="scope_backup_failed">そのファイルを読み書きできませんでした。</string>
-    <string name="scope_restore_empty">このファイルには適用範囲の項目がありません。適用範囲は変更していません。</string>
     <string name="scope_select">選択</string>
     <string name="scope_sort">並べ替え</string>
     <string name="scope_modules">ほかのモジュール</string>

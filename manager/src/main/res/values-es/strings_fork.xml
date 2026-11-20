@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings added by this fork, kept out of upstream's strings.xml so upstream and Crowdin
+     updates to that file merge without conflicts. -->
+<resources>
+    <string name="modules_backup_partial">Se guardaron %1$d módulos, pero no se pudo leer el ámbito de %2$s y se guardó vacío.</string>
+    <string name="scope_restore_empty">Este archivo no tiene entradas de ámbito. El ámbito se ha dejado como estaba.</string>
+</resources>

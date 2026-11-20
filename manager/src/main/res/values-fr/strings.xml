@@ -103,7 +103,6 @@
     <string name="modules_restore">Restaurer les modules</string>
     <string name="modules_backup_done">%1$d modules et leurs portées sauvegardés.</string>
     <string name="modules_backup_failed">Impossible d\'écrire la sauvegarde.</string>
-    <string name="modules_backup_partial">%1$d modules sauvegardés, mais la portée de %2$s n\'a pas pu être lue et a été enregistrée vide.</string>
     <string name="modules_restore_done">%1$d modules restaurés, %2$d ignorés car non installés ici.</string>
     <string name="modules_restore_failed">Impossible de lire cette sauvegarde.</string>
     <string name="modules_search_hint">Rechercher un module</string>
@@ -150,7 +149,6 @@
     <string name="scope_clear_visible">Tout désélectionner à l\'écran</string>
     <string name="scope_backup_done">Portée enregistrée.</string>
     <string name="scope_backup_failed">Impossible de lire ou d\'écrire ce fichier.</string>
-    <string name="scope_restore_empty">Ce fichier ne contient aucune entrée de portée. La portée est restée inchangée.</string>
     <string name="scope_select">Sélection</string>
     <string name="scope_sort">Trier</string>
     <string name="scope_modules">Autres modules</string>

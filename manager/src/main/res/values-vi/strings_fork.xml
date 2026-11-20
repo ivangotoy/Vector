@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings added by this fork, kept out of upstream's strings.xml so upstream and Crowdin
+     updates to that file merge without conflicts. -->
+<resources>
+    <string name="modules_backup_partial">Đã sao lưu %1$d mô-đun, nhưng không đọc được phạm vi của %2$s nên đã lưu trống.</string>
+    <string name="scope_restore_empty">Tệp này không có mục phạm vi nào. Phạm vi được giữ nguyên.</string>
+</resources>
