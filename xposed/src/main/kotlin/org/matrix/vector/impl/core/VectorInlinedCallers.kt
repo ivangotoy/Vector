@@ -125,16 +125,9 @@ object VectorInlinedCallers {
                     "initMiuiResource",
                     arrayOf(Resources::class.java, String::class.java),
                 ),
-                TargetExecutable(
-                    "android.app.LoadedApk",
-                    "getResources",
-                    arrayOf(Resources::class.java),
-                ),
-                TargetExecutable(
-                    "android.content.res.Resources",
-                    "getSystem",
-                    arrayOf(Resources::class.java),
-                ),
+                // Both take no arguments (Resources is what they return).
+                TargetExecutable("android.app.LoadedApk", "getResources", emptyArray()),
+                TargetExecutable("android.content.res.Resources", "getSystem", emptyArray()),
                 TargetExecutable(
                     "android.app.ApplicationPackageManager",
                     "getResourcesForApplication",
