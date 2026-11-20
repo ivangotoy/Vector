@@ -1172,7 +1172,9 @@ private fun ModuleUpdatesSheet(
         remember(entries, upgradable, mutedUpgradable, channel) {
             (upgradable + mutedUpgradable).mapNotNull { name ->
                 val entry = entries[name] ?: return@mapNotNull null
-                val release = entry.module.releasesOn(channel).firstOrNull()
+                // The release the row offers (StoreEntry.latest is offeredOn): the newest with an
+                // APK, so the size shown and the APK installed belong to the version named.
+                val release = entry.module.releasesOn(channel).firstOrNull { it.apks.isNotEmpty() }
                 val apks = release?.releaseAssets.orEmpty().filter { it.isApk }
                 Row(entry, release?.version, apks.singleOrNull(), name in mutedUpgradable)
             }

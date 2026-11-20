@@ -781,7 +781,10 @@ private fun ModuleUpdateSection(
     val outdated = entry.copy(updatesMuted = false).upgradable
     val release =
         remember(entry.module, channelPreference) {
-            entry.module.releasesOn(StoreChannel.of(channelPreference)).firstOrNull()
+            // The release the sheet offers (StoreEntry.latest is offeredOn): the newest with an APK.
+            entry.module.releasesOn(StoreChannel.of(channelPreference)).firstOrNull {
+                it.apks.isNotEmpty()
+            }
         }
     val apks = release?.releaseAssets.orEmpty().filter { it.isApk }
     var confirming by remember { mutableStateOf<ReleaseAsset?>(null) }
