@@ -51,24 +51,9 @@ static void ensureInitialized(JNIEnv *env) {
     std::call_once(init_flag, [&]() {
         LOGD("ObfuscationManager.init");
 
-        if (auto file_descriptor = lsplant::JNI_FindClass(env, "java/io/FileDescriptor")) {
-            class_file_descriptor =
-                static_cast<jclass>(lsplant::JNI_NewGlobalRef(env, file_descriptor));
-        } else
-            return;
-
-        method_file_descriptor_ctor =
-            lsplant::JNI_GetMethodID(env, class_file_descriptor, "<init>", "(I)V");
-
-        if (auto shared_memory = lsplant::JNI_FindClass(env, "android/os/SharedMemory")) {
-            class_shared_memory =
-                static_cast<jclass>(lsplant::JNI_NewGlobalRef(env, shared_memory));
-        } else
-            return;
-
-        method_shared_memory_ctor = lsplant::JNI_GetMethodID(env, class_shared_memory, "<init>",
-                                                             "(Ljava/io/FileDescriptor;)V");
-
+        // The replacement names come first and depend on nothing: a class lookup below that
+        // fails returns early, and a replacement left empty would have obfuscateDexBuffer copy
+        // a signature's length of bytes out of a one-byte string.
         auto regen = [](std::string_view original_signature) {
             static constexpr auto chrs = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -114,6 +99,24 @@ static void ensureInitialized(JNIEnv *env) {
             i.second = regen(i.first);
             LOGV("%s => %s", i.first.c_str(), i.second.c_str());
         }
+
+        if (auto file_descriptor = lsplant::JNI_FindClass(env, "java/io/FileDescriptor")) {
+            class_file_descriptor =
+                static_cast<jclass>(lsplant::JNI_NewGlobalRef(env, file_descriptor));
+        } else
+            return;
+
+        method_file_descriptor_ctor =
+            lsplant::JNI_GetMethodID(env, class_file_descriptor, "<init>", "(I)V");
+
+        if (auto shared_memory = lsplant::JNI_FindClass(env, "android/os/SharedMemory")) {
+            class_shared_memory =
+                static_cast<jclass>(lsplant::JNI_NewGlobalRef(env, shared_memory));
+        } else
+            return;
+
+        method_shared_memory_ctor = lsplant::JNI_GetMethodID(env, class_shared_memory, "<init>",
+                                                             "(Ljava/io/FileDescriptor;)V");
 
         LOGD("ObfuscationManager init successfully");
     });
@@ -196,6 +199,8 @@ Java_org_matrix_vector_daemon_utils_ObfuscationManager_obfuscateDex(JNIEnv *env,
                                                                     [[maybe_unused]] jclass clazz,
                                                                     jobject memory) {
     ensureInitialized(env);
+    // Both results are built from these; a lookup that failed in ensureInitialized left them null.
+    if (!method_file_descriptor_ctor || !method_shared_memory_ctor) return nullptr;
 
     int fd = ASharedMemory_dupFromJava(env, memory);
     if (fd < 0) return nullptr;
