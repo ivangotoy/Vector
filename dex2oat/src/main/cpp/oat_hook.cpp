@@ -158,13 +158,23 @@ bool SpoofKeyValueStore(uint8_t* store) {
 
         ptr = value_end + 1;
         if (has_padding) {
-            while (*ptr == '\0') {
+            // Padding may run to the end of the store; never past it.
+            while (ptr < store_end && *ptr == '\0') {
                 ptr++;
             }
         }
     }
 
     if (store_modified) {
+        // The rebuilt store must fit where the old one was: a longer one would overwrite whatever
+        // follows the header. Too long, the original is left as it is.
+        size_t needed = 0;
+        for (const auto& [key, value] : new_store_map) needed += key.length() + 1 + value.length() + 1;
+        if (needed > store_size) {
+            LOGE("Rebuilt KeyValueStore needs %zu bytes, only %u available; left unchanged", needed,
+                 store_size);
+            return false;
+        }
         uint8_t* const new_store_end = WriteKeyValueStore(new_store_map, store);
         *store_size_ptr = new_store_end - store;
         LOGI("Store size set to %u", *store_size_ptr);
