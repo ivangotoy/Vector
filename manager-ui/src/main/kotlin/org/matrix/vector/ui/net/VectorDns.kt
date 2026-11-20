@@ -105,12 +105,15 @@ internal constructor(
     val status: StateFlow<DohStatus> = _status.asStateFlow()
 
     /**
-     * Latched once the DoH endpoint proves unreachable.
+     * Why the DoH endpoint proved unusable, once it has; null while it has not.
      *
-     * Volatile rather than synchronised: two threads racing to set it to true is harmless, and
-     * lookups happen on every OkHttp dispatcher thread.
+     * Kept rather than a flag so every latched lookup can say why: the status is overwritten by
+     * any lookup made with DoH off, so after the switch is turned back on it has to be restated.
+     *
+     * Volatile rather than synchronised: two threads racing to latch is harmless, and lookups
+     * happen on every OkHttp dispatcher thread.
      */
-    @Volatile private var dohUnavailable = false
+    @Volatile private var latchedReason: String? = null
 
     private val doh: Dns by lazy(newDoh)
 
@@ -137,16 +140,20 @@ internal constructor(
      * kill the host. This is the way back, and it is offered only once the fallback has happened.
      */
     fun retry() {
-        dohUnavailable = false
+        latchedReason = null
         _status.value = DohStatus.Untested
     }
 
     override fun lookup(hostname: String): List<InetAddress> {
+        val latched = latchedReason
         if (!settings.dohEnabled.value) {
             _status.value = DohStatus.Disabled
         } else if (!direct()) {
             _status.value = DohStatus.Bypassed
-        } else if (!dohUnavailable) {
+        } else if (latched != null) {
+            // The reason recorded when DoH failed, not this lookup's name.
+            _status.value = DohStatus.FellBack(latched)
+        } else {
             try {
                 val resolved = doh.lookup(hostname)
                 _status.value = DohStatus.Working(hostname)
@@ -164,8 +171,9 @@ internal constructor(
                     // asking it about every other name; this one name goes to the system resolver.
                     return system.lookup(hostname)
                 }
-                dohUnavailable = true
-                _status.value = DohStatus.FellBack(e.describe(hostname))
+                val reason = e.describe(hostname)
+                latchedReason = reason
+                _status.value = DohStatus.FellBack(reason)
                 Log.w(
                     TAG,
                     "dns: DoH lookup of $hostname failed, using the system resolver for this session",
@@ -173,8 +181,6 @@ internal constructor(
                 )
             }
         }
-        // Latched: the status already says why, and repeating it on every name would only replace
-        // the host that actually failed with whichever one asked next.
         return system.lookup(hostname)
     }
 

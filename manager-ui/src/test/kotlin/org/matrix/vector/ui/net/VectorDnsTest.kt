@@ -103,6 +103,28 @@ class VectorDnsTest {
     }
 
     @Test
+    fun latchedLookupRestatesTheFallbackAfterTheSwitchWasOff() {
+        val enabled = MutableStateFlow(true)
+        val switchable =
+            object : NetworkSettings {
+                override val dohEnabled: StateFlow<Boolean> = enabled
+
+                override fun setDohEnabled(enabled: Boolean) = Unit
+            }
+        val dns = VectorDns(switchable, system) { FailingDoh { ConnectException("refused") } }
+        dns.lookup("a.example.com")
+        assertEquals(DohStatus.FellBack("refused"), dns.status.value)
+
+        enabled.value = false
+        dns.lookup("b.example.com")
+        assertEquals(DohStatus.Disabled, dns.status.value)
+
+        enabled.value = true
+        dns.lookup("c.example.com")
+        assertEquals(DohStatus.FellBack("refused"), dns.status.value)
+    }
+
+    @Test
     fun interruptDoesNotLatch() {
         val doh = FailingDoh { InterruptedException() }
         val dns = dnsOver(doh)
