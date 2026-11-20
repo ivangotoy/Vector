@@ -93,8 +93,10 @@ class BackupRepository(private val context: Context, private val daemon: DaemonC
                     BackupFile(createdAt = System.currentTimeMillis() / 1000, modules = modules)
 
                 // Gzipped: a scope list for a device with hundreds of apps is mostly repeated
-                // package prefixes and compresses to a fraction of its size.
-                context.contentResolver.openOutputStream(uri)?.use { out ->
+                // package prefixes and compresses to a fraction of its size. "wt", because a
+                // provider need not truncate on "w", and a longer file chosen to be overwritten
+                // would keep its tail after the gzip trailer.
+                context.contentResolver.openOutputStream(uri, "wt")?.use { out ->
                     GZIPOutputStream(out).use { gzip ->
                         gzip.write(json.encodeToString(payload).toByteArray())
                     }
