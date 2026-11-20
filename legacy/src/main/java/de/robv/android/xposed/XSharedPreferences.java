@@ -105,7 +105,15 @@ public final class XSharedPreferences implements SharedPreferences {
                         }
                         PrefsData data = sWatcherKeyInstances.get(key);
                         if (data != null && data.hasChanged()) {
-                            for (OnSharedPreferenceChangeListener l : data.mPrefs.mListeners.keySet()) {
+                            // A copy taken under the lock that guards register/unregister: a
+                            // listener that unregisters itself (or any other thread) would
+                            // otherwise end this thread, and the app, with a
+                            // ConcurrentModificationException.
+                            java.util.List<OnSharedPreferenceChangeListener> listeners;
+                            synchronized (data.mPrefs) {
+                                listeners = new java.util.ArrayList<>(data.mPrefs.mListeners.keySet());
+                            }
+                            for (OnSharedPreferenceChangeListener l : listeners) {
                                 try {
                                     l.onSharedPreferenceChanged(data.mPrefs, null);
                                 } catch (Throwable t) {
