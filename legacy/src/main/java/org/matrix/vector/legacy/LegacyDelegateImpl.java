@@ -136,8 +136,14 @@ public class LegacyDelegateImpl implements LegacyFrameworkDelegate {
             });
             XposedHelpers.findAndHookMethod("android.app.ContextImpl", lpparam.classLoader, "getPreferencesDir", new XC_MethodReplacement() {
                 @Override
-                protected Object replaceHookedMethod(MethodHookParam param) {
-                    return new File(VectorServiceClient.INSTANCE.getPrefsPath(lpparam.packageName));
+                protected Object replaceHookedMethod(MethodHookParam param) throws Throwable {
+                    String path = VectorServiceClient.INSTANCE.getPrefsPath(lpparam.packageName);
+                    // No answer from the daemon: the app's own directory rather than an NPE in its
+                    // getSharedPreferences.
+                    if (path == null) {
+                        return XposedBridge.invokeOriginalMethod(param.method, param.thisObject, param.args);
+                    }
+                    return new File(path);
                 }
             });
         }
