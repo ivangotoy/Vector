@@ -295,9 +295,13 @@ class HomeViewModel(
         }
     }
 
-    /** Removes the copy of the manager whose signature is refusing the install. */
+    /**
+     * Removes the copy of the manager whose signature is refusing the install.
+     *
+     * On the application scope, like [installManagerApp], so leaving the screen does not cancel it.
+     */
     fun removeConflictingManager() {
-        viewModelScope.launch {
+        ServiceLocator.appScope.launch(Dispatchers.Main) {
             ServiceLocator.managerInstaller.removeConflicting()
             refreshPresence()
         }
@@ -313,8 +317,14 @@ class HomeViewModel(
     fun requestShortcut(): Boolean =
         LaunchShortcut.request(ServiceLocator.context) { refreshPresence() }
 
+    /**
+     * On the application scope rather than this view model's: the status page says the install runs
+     * while the reader is free to go elsewhere, and leaving clears this view model. Cancelled with
+     * it, the install abandoned its session and left the shared state at Installing, a spinner for
+     * the life of the process.
+     */
     fun installManagerApp() {
-        viewModelScope.launch {
+        ServiceLocator.appScope.launch(Dispatchers.Main) {
             ServiceLocator.managerInstaller.install()
             refreshPresence()
         }
