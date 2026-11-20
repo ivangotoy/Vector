@@ -62,6 +62,17 @@ public final class XposedInit {
             return;
         }
 
+        // Caught here rather than by the caller: the module whose hook triggered this call would
+        // otherwise lose its InitPackageResources registration while every later one keeps its own,
+        // since resourceInit is already set. The hooks installed so far stay and keep working.
+        try {
+            installResourceHooks();
+        } catch (Throwable t) {
+            Log.e(TAG, "Resource hooks are only partly installed", t);
+        }
+    }
+
+    private static void installResourceHooks() throws Throwable {
         findAndHookMethod("android.app.ApplicationPackageManager", null, "getResourcesForApplication",
                 ApplicationInfo.class, new XC_MethodHook() {
                     @Override
