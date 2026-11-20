@@ -636,8 +636,8 @@ object ConfigCache {
                 if (Files.isSymbolicLink(p)) return@forEach
                 val pathStr = p.toString()
 
-                // Change Owner
-                Os.chown(pathStr, uid, uid)
+                // Change Owner (of the entry itself, should it have become a link since the check)
+                Os.lchown(pathStr, uid, uid)
 
                 // Set Permissions using Octal
                 // Root folder must be word-readable for monitoring
