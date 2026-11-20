@@ -316,6 +316,12 @@ class LogsViewModel(private val source: LogSource) : ViewModel() {
                         try {
                             pane.content = content
                             content.index().also { pane.index = it }
+                        } catch (e: kotlinx.coroutines.CancellationException) {
+                            // Superseded by a newer load (the live tail cancels this one), not a
+                            // read error: the newer load owns the pane now.
+                            runCatching { content.close() }
+                            pane.content = null
+                            throw e
                         } catch (e: Exception) {
                             runCatching { content.close() }
                             pane.content = null
@@ -396,6 +402,8 @@ class LogsViewModel(private val source: LogSource) : ViewModel() {
         val rows =
             try {
                 content.readRows(index, lines)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 pane.state.update { it.copy(status = LogStatus.ReadFailed(e.message)) }
                 return
@@ -546,6 +554,8 @@ class LogsViewModel(private val source: LogSource) : ViewModel() {
                         pane.state.update { it.copy(status = LogStatus.Scanning(progress)) }
                     }
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 pane.state.update { it.copy(status = LogStatus.ReadFailed(e.message)) }
                 return
