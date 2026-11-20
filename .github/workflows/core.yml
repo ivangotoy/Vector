@@ -54,8 +54,8 @@ jobs:
       # canary or a tag signed with the debug key — which the daemon's InstallerVerifier rejects,
       # and which nobody notices until someone tries to install the manager. On this repository the
       # secret is always meant to be there, so its absence stops the run here. A fork has no access
-      # to it and cannot be given one, so a fork builds unsigned, as does any branch that is not
-      # master: neither publishes anything.
+      # to it and cannot be given one, so a fork builds with the debug key, as does any branch that
+      # is not master: neither publishes anything.
       - name: Write key
         if: ${{ ( github.event_name != 'pull_request' && github.ref == 'refs/heads/master' ) || github.ref_type == 'tag' }}
         env:
@@ -73,7 +73,7 @@ jobs:
               echo "::error::KEY_STORE is empty on $REF. Refusing to publish an unsigned build."
               exit 1
             fi
-            echo "No signing secret on this fork; building unsigned."
+            echo "No signing secret on this fork; building with the debug key."
             exit 0
           fi
           # Through the environment rather than interpolated into the script: a password holding a
