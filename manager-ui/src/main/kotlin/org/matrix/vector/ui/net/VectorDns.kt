@@ -3,6 +3,7 @@ package org.matrix.vector.ui.net
 import android.util.Log
 import java.net.InetAddress
 import java.net.Proxy
+import java.net.UnknownHostException
 import java.net.ProxySelector
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -71,7 +72,8 @@ sealed interface DohStatus {
  * and a lookup path with no fallback would then take the module list, the activity feed and every
  * avatar down together — leaving the switch that caused it as the only way out. So:
  * - a failed DoH lookup falls through to the system resolver rather than failing the request;
- * - the first failure latches for the session, so the timeout is paid once and not per lookup;
+ * - the first failure to *reach* DoH latches for the session, so the timeout is paid once and not
+ *   per lookup; an answer about the name itself (no such host, no address) does not;
  * - the DoH client's own timeouts are short, so that one payment is a few seconds, not fifteen;
  * - a configured HTTP proxy disables DoH entirely, because the proxy is doing the resolving and
  *   bootstrap IPs are meaningless to it.
@@ -85,9 +87,17 @@ sealed interface DohStatus {
  * client would drop the connection pool and orphan the disk cache, so reading them here is what
  * lets a switch — or joining a VPN — take effect before the next process start.
  */
-class VectorDns(private val settings: NetworkSettings, bootstrapClient: OkHttpClient) : Dns {
+class VectorDns
+internal constructor(
+    private val settings: NetworkSettings,
+    private val system: Dns,
+    newDoh: () -> Dns,
+) : Dns {
 
-    private val endpoint = "https://cloudflare-dns.com/dns-query".toHttpUrl()
+    constructor(
+        settings: NetworkSettings,
+        bootstrapClient: OkHttpClient,
+    ) : this(settings, Dns.SYSTEM, { dohOver(bootstrapClient) })
 
     private val _status = MutableStateFlow<DohStatus>(DohStatus.Untested)
 
@@ -102,27 +112,7 @@ class VectorDns(private val settings: NetworkSettings, bootstrapClient: OkHttpCl
      */
     @Volatile private var dohUnavailable = false
 
-    private val doh: DnsOverHttps by lazy {
-        DnsOverHttps.Builder()
-            .client(
-                bootstrapClient
-                    .newBuilder()
-                    // Fail fast. The default connect timeout is long enough that a blocked
-                    // endpoint reads as a hung app rather than as a fallback about to happen.
-                    .connectTimeout(3, TimeUnit.SECONDS)
-                    .callTimeout(5, TimeUnit.SECONDS)
-                    .build()
-            )
-            .url(endpoint)
-            .bootstrapDnsHosts(
-                InetAddress.getByName("1.1.1.1"),
-                InetAddress.getByName("1.0.0.1"),
-                InetAddress.getByName("2606:4700:4700::1111"),
-                InetAddress.getByName("2606:4700:4700::1001"),
-            )
-            .includeIPv6(true)
-            .build()
-    }
+    private val doh: Dns by lazy(newDoh)
 
     /**
      * True when nothing is proxying our traffic, which is the only case where DoH is ours to do.
@@ -161,18 +151,19 @@ class VectorDns(private val settings: NetworkSettings, bootstrapClient: OkHttpCl
                 val resolved = doh.lookup(hostname)
                 _status.value = DohStatus.Working(hostname)
                 return resolved
+            } catch (e: InterruptedException) {
+                // The calling thread was interrupted while it waited for the answer: nothing is
+                // known about DoH. The flag is put back for whoever interrupted it.
+                Thread.currentThread().interrupt()
             } catch (e: Exception) {
-                // Every way DoH can fail, not only "no such host". A blocked endpoint raises
-                // UnknownHostException, a slow one raises InterruptedIOException from the timeouts
-                // above, and a resolver that cannot read its own public suffix list raises
-                // IllegalStateException before a socket is ever opened — which used to escape this
-                // method entirely, so the latch never closed and the fallback this class is built
-                // around never engaged. Anything arriving here means DoH is not usable, which is
-                // the condition documented above.
-                //
                 // Exception and not Throwable: an OutOfMemoryError is not a DNS outcome. There is
                 // no CancellationException to preserve either — this is a plain blocking call on an
                 // OkHttp dispatcher thread, with no coroutine in the stack.
+                if (e.isAnswerAboutTheName()) {
+                    // The endpoint was reached and answered. That answer is no reason to stop
+                    // asking it about every other name; this one name goes to the system resolver.
+                    return system.lookup(hostname)
+                }
                 dohUnavailable = true
                 _status.value = DohStatus.FellBack(e.describe(hostname))
                 Log.w(
@@ -184,8 +175,23 @@ class VectorDns(private val settings: NetworkSettings, bootstrapClient: OkHttpCl
         }
         // Latched: the status already says why, and repeating it on every name would only replace
         // the host that actually failed with whichever one asked next.
-        return Dns.SYSTEM.lookup(hostname)
+        return system.lookup(hostname)
     }
+
+    /**
+     * Whether DoH reached its endpoint and the failure is the answer about this one name.
+     *
+     * OkHttp's DoH reports every DNS answer without an address as [UnknownHostException]: no such
+     * name (NXDOMAIN), a server failure, an empty answer, and a private name it declines to send.
+     * Failing to reach the endpoint arrives as another [java.io.IOException] (connect, timeout,
+     * TLS, an HTTP error status, a body that is not a DNS message), and a public suffix list that
+     * will not load as an [IllegalStateException]. The A and AAAA queries fail separately and the
+     * second failure is attached as suppressed, so both have to be answers. The DoH client follows
+     * no redirects, which closes the one transport path that could raise [UnknownHostException]:
+     * the bootstrap resolver refusing a redirect target.
+     */
+    private fun Exception.isAnswerAboutTheName(): Boolean =
+        this is UnknownHostException && suppressed.all { it is UnknownHostException }
 
     /**
      * A line short enough to sit under a switch, and worth the room it takes.
@@ -199,4 +205,33 @@ class VectorDns(private val settings: NetworkSettings, bootstrapClient: OkHttpCl
     private fun Throwable.describe(host: String): String =
         message?.takeIf { it.isNotBlank() && !it.equals(host, ignoreCase = true) }
             ?: javaClass.simpleName
+
+    private companion object {
+        val endpoint = "https://cloudflare-dns.com/dns-query".toHttpUrl()
+
+        fun dohOver(bootstrapClient: OkHttpClient): Dns =
+            DnsOverHttps.Builder()
+                .client(
+                    bootstrapClient
+                        .newBuilder()
+                        // Fail fast. The default connect timeout is long enough that a blocked
+                        // endpoint reads as a hung app rather than as a fallback about to happen.
+                        .connectTimeout(3, TimeUnit.SECONDS)
+                        .callTimeout(5, TimeUnit.SECONDS)
+                        // A DoH endpoint answers in place. A redirect would send the query to a
+                        // host the bootstrap resolver refuses with UnknownHostException, which
+                        // would read as an answer about the name; unfollowed, it is an HTTP error.
+                        .followRedirects(false)
+                        .build()
+                )
+                .url(endpoint)
+                .bootstrapDnsHosts(
+                    InetAddress.getByName("1.1.1.1"),
+                    InetAddress.getByName("1.0.0.1"),
+                    InetAddress.getByName("2606:4700:4700::1111"),
+                    InetAddress.getByName("2606:4700:4700::1001"),
+                )
+                .includeIPv6(true)
+                .build()
+    }
 }
