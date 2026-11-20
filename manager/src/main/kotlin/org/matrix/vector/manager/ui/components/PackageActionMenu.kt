@@ -487,8 +487,12 @@ LocalizedOverlay {
                             "(code $code)",
                         started.exceptionOrNull(),
                     )
-                }
-                PackageActionResult(R.string.action_opened_info)
+                    PackageActionResult(
+                        R.string.action_open_info_failed,
+                        appName,
+                        tone = SnackbarTone.Failure,
+                    )
+                } else PackageActionResult(R.string.action_opened_info)
             }
         }
         }

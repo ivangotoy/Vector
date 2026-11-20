@@ -6,4 +6,5 @@
     <string name="scope_restore_empty">This file has no scope entries. The scope was left as it was.</string>
     <!-- English only (translatable="false"): added by this fork after its translations were made. -->
     <string name="modules_restore_scope_refused" translatable="false">The scope of %1$s could not be applied.</string>
+    <string name="action_open_info_failed" translatable="false">Could not open app info for %1$s.</string>
 </resources>
