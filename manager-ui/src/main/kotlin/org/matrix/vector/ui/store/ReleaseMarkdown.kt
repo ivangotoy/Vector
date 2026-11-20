@@ -235,9 +235,11 @@ private fun inline(text: String, repoUrl: String): String {
         Regex("\\[([^\\]]+)]\\(([^)\\s]+)[^)]*\\)").replace(working) { match ->
             stash("<a href=\"${match.groupValues[2]}\">${match.groupValues[1]}</a>")
         }
-    // Bare URLs, which release notes use for compare links.
+    // Bare URLs, which release notes use for compare links; a closing quote is not part of one.
     working =
-        Regex("\\bhttps?://[^\\s<]+").replace(working) { stash("<a href=\"${it.value}\">${it.value}</a>") }
+        Regex("\\bhttps?://(?:(?!&quot;)[^\\s<])+").replace(working) {
+            stash("<a href=\"${it.value}\">${it.value}</a>")
+        }
 
     working = linkReferences(working, repoUrl, ::stash)
 
@@ -279,5 +281,11 @@ private fun linkReferences(text: String, repoUrl: String, stash: (String) -> Str
     return working
 }
 
+// Double quotes too: link and image targets go from the escaped text into "-quoted attributes.
+// (Not ' as &#39;: the issue-number rule would read that as #39.)
 private fun escape(text: String): String =
-    text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    text
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
