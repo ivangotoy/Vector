@@ -60,10 +60,10 @@ object Constants {
         // what is in it. Transaction ids follow declaration order, so a daemon built from a
         // different revision of the AIDL maps the same numbers to different methods, and every call
         // would land somewhere plausible and wrong -- which is worse than failing, because nothing
-        // throws. getProtocolVersion is declared first and is therefore transaction zero in every
-        // revision, so it is the one question both ends are guaranteed to agree on. A daemon too
-        // old to implement it answers 0 out of an untouched reply parcel, which is below the floor
-        // and refused for the right reason.
+        // throws. getProtocolVersion is declared first and is therefore FIRST_CALL_TRANSACTION in
+        // every revision, so it is the one question both ends are guaranteed to agree on. A daemon
+        // too old to implement it answers 0 out of an untouched reply parcel, which is below the
+        // floor and refused for the right reason.
         val theirProtocol = runCatching { service.protocolVersion }.getOrNull()
         if (theirProtocol != null && theirProtocol != IManagerService.PROTOCOL_VERSION) {
             logE(
