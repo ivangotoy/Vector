@@ -10,6 +10,8 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.CacheControl
 import okhttp3.OkHttpClient
@@ -52,6 +54,18 @@ class ModuleInstaller(private val context: Context, private val client: OkHttpCl
     }
 
     /**
+     * One install at a time.
+     *
+     * [state] is a single value shared by both callers, the Store's install button and the update
+     * queue (which also runs the package sheet's single update), and both start installs on the
+     * application scope. Two installs running together wrote their progress over each other, so a
+     * Done could be replaced by the other package's Downloading before anyone saw it. A second
+     * install now waits for the first to finish and then runs as before; a wait on a mutex is
+     * cancellable, so leaving or acknowledging the update queue still stops it.
+     */
+    private val installing = Mutex()
+
+    /**
      * Fetches [asset] and installs it as [packageName].
      *
      * Returns true only when the platform reports the package installed. There is no resume: a
@@ -64,6 +78,9 @@ class ModuleInstaller(private val context: Context, private val client: OkHttpCl
      * daemon.
      */
     suspend fun install(packageName: String, asset: ReleaseAsset): Boolean =
+        installing.withLock { installNow(packageName, asset) }
+
+    private suspend fun installNow(packageName: String, asset: ReleaseAsset): Boolean =
         withContext(Dispatchers.IO) {
             val url = asset.downloadUrl
             // https only: from the shell identity this install needs no confirmation from the user.
