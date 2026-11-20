@@ -64,11 +64,13 @@ jobs:
           ALIAS: ${{ secrets.ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           IS_UPSTREAM: ${{ github.repository_owner == 'JingMatrix' }}
+          # The ref by environment: a tag name pasted into the script would be run as code
+          REF: ${{ github.ref }}
         run: |
           set -euo pipefail
           if [ -z "$KEY_STORE" ]; then
             if [ "$IS_UPSTREAM" = "true" ]; then
-              echo "::error::KEY_STORE is empty on ${{ github.ref }}. Refusing to publish an unsigned build."
+              echo "::error::KEY_STORE is empty on $REF. Refusing to publish an unsigned build."
               exit 1
             fi
             echo "No signing secret on this fork; building unsigned."
