@@ -623,8 +623,13 @@ class ScopeViewModel(
         // result, which this would only be able to contradict.
         if (_uiState.value.loading || _applying.value) return
         viewModelScope.launch {
+            val before = savedScope.value
             val current = readSavedScope() ?: return@launch
-            val baseline = savedScope.value.asStored()
+            // Checked again after the read, which takes a binder round trip: an apply that began,
+            // or finished, while it was out has published a newer answer than this read, and
+            // folding the older one in would put back rows that apply has just removed.
+            if (_applying.value || savedScope.value !== before) return@launch
+            val baseline = before.asStored()
             if (current == baseline) return@launch
             savedScope.value = current
             draftScope.value = draftScope.value + (current - baseline)
