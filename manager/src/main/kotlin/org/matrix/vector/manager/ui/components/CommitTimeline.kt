@@ -45,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import java.util.Calendar
+import java.util.Locale
 import org.matrix.vector.manager.R
 import org.matrix.vector.ui.locale.currentLocale
 import org.matrix.vector.manager.data.github.TimelineCommit
@@ -407,10 +408,7 @@ fun MonthMarkerRow(month: Int, year: Int?, commits: Int, people: Int, modifier: 
     val locale = currentLocale()
     val label =
         remember(month, year, locale) {
-            val cal = Calendar.getInstance(locale).apply { set(Calendar.MONTH, month) }
-            val name =
-                cal.getDisplayName(Calendar.MONTH, Calendar.LONG_STANDALONE, locale)
-                    ?: month.toString()
+            val name = monthName(month, locale)
             if (year == null) name else "$name $year"
         }
     Row(
@@ -547,4 +545,16 @@ fun HistoryFootRow(
             color = colors.outline,
         )
     }
+}
+
+/**
+ * The stand-alone name of [month] (0-11). Day 1 first: a lenient Calendar keeps today's day of
+ * month, so on the 31st setting a 30-day month rolled over into the next and named that one.
+ */
+internal fun monthName(month: Int, locale: Locale, today: Calendar = Calendar.getInstance(locale)): String {
+    val cal = (today.clone() as Calendar).apply {
+        set(Calendar.DAY_OF_MONTH, 1)
+        set(Calendar.MONTH, month)
+    }
+    return cal.getDisplayName(Calendar.MONTH, Calendar.LONG_STANDALONE, locale) ?: month.toString()
 }
