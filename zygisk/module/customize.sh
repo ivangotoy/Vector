@@ -119,6 +119,8 @@ if [ "$API" -ge 29 ]; then
 
     ui_print "- Patching binaries for anti-detection"
     DEV_PATH=$(tr -dc 'a-z0-9' </dev/urandom | head -c 32)
+    # Same length as the placeholder, or the patched binaries would shift and break
+    [ ${#DEV_PATH} -eq 32 ] || abort "! Failed to generate a random path"
     # Patch only if the file successfully exists
     [ -f "$MODPATH/daemon.apk" ] && sed -i "s/5291374ceda0aef7c5d86cd2a4f6a3ac/$DEV_PATH/g" "$MODPATH/daemon.apk"
     [ -f "$MODPATH/bin/dex2oat32" ] && sed -i "s/5291374ceda0aef7c5d86cd2a4f6a3ac/$DEV_PATH/" "$MODPATH/bin/dex2oat32"
