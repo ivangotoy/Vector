@@ -25,6 +25,8 @@ jobs:
           set -eu
           git clone -q --branch main "$SERVER_URL/$REPOSITORY.git" src
           git -C src checkout -q --detach "$BASE_SHA"
+      - name: Offline tests (.forgejo/tests/run.sh, no secrets)
+        run: bash src/.forgejo/tests/run.sh
       - name: Build (no forge token, unprivileged build user)
         env:
           SERVER_URL: ${{ github.server_url }}

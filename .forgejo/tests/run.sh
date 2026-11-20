@@ -398,6 +398,15 @@ if (cd "$WF/job" && env SERVER_URL="file://$WF/forge" REPOSITORY=owner/repo BASE
 else
     bad "module-release.yml: dispatched commit not used (ran: $(tr '\n' ';' < "$WF/marker.log") $(tail -n 2 "$WF/out.log" | tr '\n' ' '))"
 fi
+# the release job runs these tests after the checkout and before the build, in a step without secrets
+python3 -I - "$ROOT/.forgejo/workflows/module-release.yml" <<'PY' && ok "module-release.yml: run.sh runs before the build, without secrets" \
+    || bad "module-release.yml: run.sh step missing, after the build, or given secrets"
+import re, sys
+steps = re.split(r"\n      - name:", open(sys.argv[1]).read())
+test = [i for i, s in enumerate(steps) if "bash src/.forgejo/tests/run.sh" in s]
+build = [i for i, s in enumerate(steps) if "module-ci.sh build src" in s]
+sys.exit(0 if len(test) == 1 and build and test[0] < build[0] and "secrets." not in steps[test[0]] else 1)
+PY
 
 echo
 if [ "$fails" = 0 ]; then echo "all checks passed"; else echo "$fails check(s) failed"; exit 1; fi
