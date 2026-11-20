@@ -118,7 +118,9 @@ private fun HtmlPane(
                             val target = request.url ?: return true
                             val scheme = target.scheme?.lowercase()
                             if (scheme == "http" || scheme == "https") {
-                                onOpenUrl(target.toString())
+                                // Only on a tap: a README that navigates by itself (a meta refresh)
+                                // must not open the in-app browser at its author's address.
+                                if (request.hasGesture()) onOpenUrl(target.toString())
                                 return true
                             }
                             // An in-page anchor resolves against about:blank; a table of contents
