@@ -54,6 +54,10 @@ run_build() {
 NEW='get("https://forge.example/owner/repo/raw/branch/main/.forgejo/releases.json", freshness)'
 grep -qF "$OLD_URL" "$ROOT/$KT" && ok "GitHubRepository.kt still holds the release-list call" \
     || bad "GitHubRepository.kt no longer holds $OLD_URL"
+# the manager unit tests run after build() rewrote that call: their fixture must answer the new address
+FT=manager/src/test/kotlin/org/matrix/vector/manager/data/repository/FrameworkUpdateRepositoryTest.kt
+grep -qF '/.forgejo/releases.json' "$ROOT/$FT" && ok "release-list test fixture answers the rewritten address" \
+    || bad "$FT does not answer /.forgejo/releases.json: the release build fails its unit tests"
 
 mktree good
 if run_build good https://forge.example; then ok "build-user succeeds"; else bad "build-user failed: $(tail -n 3 "$S/good/out.log")"; fi

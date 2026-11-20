@@ -22,13 +22,19 @@ class FrameworkUpdateRepositoryTest {
             """"browser_download_url":"https://example.com/Vector-v2.0-2000-Release.zip",""" +
             """"digest":"sha256:${"0".repeat(64)}"}]}]"""
 
-    /** Answers the release list from the fixture above and 404 to anything else. No network. */
+    /**
+     * Answers the release list from the fixture above and 404 to anything else. No network. The
+     * release build points the release-list call at the fork's `.forgejo/releases.json`, so both
+     * addresses are answered.
+     */
     private val client =
         OkHttpClient.Builder()
             .addInterceptor(
                 Interceptor { chain ->
                     val request = chain.request()
-                    val found = "/releases?per_page=" in request.url.toString()
+                    val url = request.url.toString()
+                    val found =
+                        "/releases?per_page=" in url || url.endsWith("/.forgejo/releases.json")
                     Response.Builder()
                         .request(request)
                         .protocol(Protocol.HTTP_1_1)
