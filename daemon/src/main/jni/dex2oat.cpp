@@ -20,6 +20,9 @@ struct UniqueFd {
     operator int() const { return fd; }
 };
 
+// The exit status of a mount child whose execlp failed, the code shells use for the same thing.
+constexpr int kExecFailed = 127;
+
 extern "C" JNIEXPORT void JNICALL Java_org_matrix_vector_daemon_env_Dex2OatServer_doMountNative(
     JNIEnv *env, jobject, jboolean enabled, jstring r32, jstring d32, jstring r64, jstring d64) {
     char dex2oat32[PATH_MAX], dex2oat64[PATH_MAX];
@@ -37,10 +40,24 @@ extern "C" JNIEXPORT void JNICALL Java_org_matrix_vector_daemon_env_Dex2OatServe
     const char *r64p = r64 ? env->GetStringUTFChars(r64, nullptr) : nullptr;
     const char *d64p = d64 ? env->GetStringUTFChars(d64, nullptr) : nullptr;
 
+    // Logged here rather than in the child. The child is forked from a multithreaded process, so
+    // a lock another thread holds at that moment stays held in it, and liblog is assumed to take
+    // locks; the parent waits on the child below without a bound.
+    LOGI("%s dex2oat wrapper", enabled ? "Enable" : "Disable");
+
     pid_t pid = fork();
     if (pid != 0) {  // Parent process
-        if (pid > 0) waitpid(pid, nullptr, 0);
-        else PLOGE("fork");
+        if (pid > 0) {
+            int status = 0;
+            const bool exec_failed = waitpid(pid, &status, 0) == pid &&
+                                     ((WIFEXITED(status) && WEXITSTATUS(status) == kExecFailed) ||
+                                      WIFSIGNALED(status));
+            if (exec_failed) {
+                LOGE("Failed to resetprop (wait status %d)", status);
+            }
+        } else {
+            PLOGE("fork");
+        }
 
         // Safely release JNI strings in the parent
         if (r32p) env->ReleaseStringUTFChars(r32, r32p);
@@ -54,7 +71,6 @@ extern "C" JNIEXPORT void JNICALL Java_org_matrix_vector_daemon_env_Dex2OatServe
         }
 
         if (enabled) {
-            LOGI("Enable dex2oat wrapper");
             if (r32p) {
                 mount(dex2oat32, r32p, nullptr, MS_BIND, nullptr);
                 mount(nullptr, r32p, nullptr, MS_BIND | MS_REMOUNT | MS_RDONLY, nullptr);
@@ -73,7 +89,6 @@ extern "C" JNIEXPORT void JNICALL Java_org_matrix_vector_daemon_env_Dex2OatServe
             }
             execlp("resetprop", "resetprop", "--delete", "dalvik.vm.dex2oat-flags", nullptr);
         } else {
-            LOGI("Disable dex2oat wrapper");
             if (r32p) umount(r32p);
             if (d32p) umount(d32p);
             if (r64p) umount(r64p);
@@ -82,8 +97,8 @@ extern "C" JNIEXPORT void JNICALL Java_org_matrix_vector_daemon_env_Dex2OatServe
                    nullptr);
         }
 
-        PLOGE("Failed to resetprop");
-        _exit(1);
+        // Only reached when execlp failed; the parent reports it from the exit status.
+        _exit(kExecFailed);
     }
 }
 
