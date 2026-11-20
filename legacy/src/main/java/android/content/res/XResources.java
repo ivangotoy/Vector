@@ -175,7 +175,11 @@ public class XResources extends XResourcesSuperClass {
 
 			// file was changed meanwhile => remove old replacements
 			for (int i = 0; i < sReplacements.size(); i++) {
-				sReplacements.valueAt(i).remove(mResDir);
+				HashMap<String, Object> inner = sReplacements.valueAt(i);
+				// getReplacement reads a row under the row's own lock only.
+				synchronized (inner) {
+					inner.remove(mResDir);
+				}
 			}
 			clearCacheBits(mReplacementsCache);
 			return true;
@@ -619,7 +623,10 @@ public class XResources extends XResourcesSuperClass {
 				inner = new HashMap<>();
 				sReplacements.put(id, inner);
 			}
-			inner.put(resDir, replacement);
+			// getReplacement reads the row under the row's own lock only, not under sReplacements.
+			synchronized (inner) {
+				inner.put(resDir, replacement);
+			}
 
 			// Under the same lock as the row, because isFirstLoad drops a directory's rows and
 			// clears its bits while holding it: a bit set outside the lock can be cleared while
