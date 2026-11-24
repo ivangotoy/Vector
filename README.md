@@ -118,3 +118,7 @@ This project is made possible by the following open-source contributions:
 ### License
 
 Vector is licensed under the [GNU General Public License v3](http://www.gnu.org/copyleft/gpl.html).
+
+## More KernelSU modules
+
+Check out my other great KernelSU modules here: https://git.digtvbg.com/explore/repos?q=kernelsu-module&topic=1
