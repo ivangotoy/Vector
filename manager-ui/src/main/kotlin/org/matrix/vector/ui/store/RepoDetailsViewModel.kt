@@ -145,7 +145,7 @@ class RepoDetailsViewModel(
                 preferences(),
             ) { catalog, detail, fetch, installed, preferences ->
                 val seed = catalog.modules.firstOrNull { it.name == packageName }
-                val module = detail ?: seed
+                val module = pageModule(seed, detail)
                 val channel = preferences.channel
                 RepoDetailsState(
                     module = module,
@@ -202,3 +202,22 @@ class RepoDetailsViewModel(
     private fun latestFor(module: OnlineModule?, channel: StoreChannel): RepoVersion? =
         module?.latestOn(channel)
 }
+
+/**
+ * The record this page shows: the fetched detail when it describes the releases the catalogue entry
+ * names, otherwise the entry itself.
+ *
+ * The detail can come from the mirror or the cache, which trail the site; the Store list may have
+ * corrected the entry to a newer release since. Shown anyway, the page offered the older APK while
+ * the list offered the newer one, and the row kept asking. The rule is the one
+ * StoreRepository.complete applies before laying a record over an entry: the same latestRelease and
+ * the same latestBetaReleaseTime. Without a catalogue entry the detail is all there is.
+ */
+internal fun pageModule(seed: OnlineModule?, detail: OnlineModule?): OnlineModule? =
+    when {
+        detail == null -> seed
+        seed == null -> detail
+        detail.latestRelease == seed.latestRelease &&
+            detail.latestBetaReleaseTime == seed.latestBetaReleaseTime -> detail
+        else -> seed
+    }
