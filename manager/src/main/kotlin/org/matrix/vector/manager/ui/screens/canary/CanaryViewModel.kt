@@ -6,7 +6,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import org.matrix.vector.manager.ui.screens.update.pageState
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
@@ -20,6 +19,7 @@ import org.matrix.vector.manager.data.repository.CanaryLayout
 import org.matrix.vector.manager.data.repository.FrameworkUpdateState
 import org.matrix.vector.manager.di.ServiceLocator
 import org.matrix.vector.manager.logW
+import org.matrix.vector.manager.ui.screens.update.pageState
 
 /**
  * The canary list, joined to the history it comes from.
