@@ -132,11 +132,7 @@ class FrameworkInstaller(
         // is the main one. A release with an unusable asset url would take the app down on a press
         // of Install rather than saying so on the bar.
         val call =
-            // noStore: a zip of many megabytes must not push the feeds out of the shared cache.
-            runCatching {
-                    val noStore = CacheControl.Builder().noStore().build()
-                    client.newCall(Request.Builder().url(url).cacheControl(noStore).build())
-                }
+            runCatching { frameworkDownloadCall(client, url) }
                 .getOrElse { e ->
                     logW("update: unusable download url $url", e)
                     append("Download failed: ${e.message}")
@@ -375,3 +371,19 @@ class FrameworkInstaller(
         const val MAX_LINES = 500
     }
 }
+
+/**
+ * The download of a framework zip, which is flashed as root: https only, and kept on https by not
+ * following a redirect to http, the rule ModuleInstaller applies to module APKs. Throws for a url
+ * that is not https or that OkHttp cannot read. noStore: a zip of many megabytes must not push the
+ * feeds out of the shared cache.
+ */
+internal fun frameworkDownloadCall(client: OkHttpClient, url: String): Call {
+    require(url.startsWith("https://", ignoreCase = true)) { "not an https url" }
+    val noStore = CacheControl.Builder().noStore().build()
+    return httpsOnly(client).newCall(Request.Builder().url(url).cacheControl(noStore).build())
+}
+
+/** [client] without the redirects that switch between https and http. */
+internal fun httpsOnly(client: OkHttpClient): OkHttpClient =
+    client.newBuilder().followSslRedirects(false).build()
