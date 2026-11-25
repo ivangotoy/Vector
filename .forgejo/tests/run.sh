@@ -356,6 +356,31 @@ build_case() {
 build_case ok 0
 build_case failed 1
 
+# Root reads upstream-desc and writes desc in OUT after the build: a link the build user left
+# there, or OUT itself replaced by a link, fails the step instead of reaching another file.
+build_link_case() {
+    local name="$1" body="$2" w="$BW/$1" t="$BW/$1.target"
+    mkdir -p "$w/.forgejo" "$t.dir"
+    printf 'secret line\n' > "$t"
+    cp "$ROOT/.forgejo/module-ci.sh" "$w/.forgejo/"
+    printf 'build() { echo zip > "$OUT/module.zip"; T=%q; %s; }\n' "$t" "$body" > "$w/.forgejo/module-ci.conf"
+    (cd "$w" && git init -q && git add -A && git -c user.name=t -c user.email=t@example.invalid commit -qm t)
+    : > "$w/setpriv.log"
+    local rc=0
+    (cd "$w" && env PATH="$BW/bin:$PATH" SETPRIV_LOG="$w/setpriv.log" SERVER_URL=https://forge.example \
+        REPOSITORY=owner/repo BASE_SHA="$(git rev-parse HEAD)" bash .forgejo/module-ci.sh build "$w") > "$w/out.log" 2>&1 || rc=$?
+    if [ "$rc" != 0 ] && grep -qE 'is not a (regular file|directory)' "$w/out.log" \
+        && [ "$(cat "$t")" = "secret line" ] && [ ! -e "$t.dir/desc" ] \
+        && { [ -L "$w/.ci-out/desc" ] || ! grep -qs "secret line" "$w/.ci-out/desc"; }; then
+        ok "build step $name: refused, no file outside OUT read or written"
+    else
+        bad "build step $name (rc=$rc): $(tail -n 1 "$w/out.log")"
+    fi
+}
+build_link_case desc-link 'ln -s "$T" "$OUT/desc"'
+build_link_case upstream-desc-link 'ln -s "$T" "$OUT/upstream-desc"'
+build_link_case out-link 'cp "$OUT/module.zip" "$T.dir/"; mv "$OUT" "$T.moved"; ln -s "$T.dir" "$OUT"'
+
 # --- module-release.yml: the job builds the dispatched commit even when main has moved since.
 # Runs the steps whose run text clones or calls `module-ci.sh build`, against a local bare repo
 # whose main has a commit after BASE_SHA. The fixture's .forgejo/module-ci.sh is a marker script
