@@ -298,6 +298,14 @@ subprojects {
                     listOf(
                         "-DVERSION_CODE=${versionCodeProvider.get()}",
                         "-DVERSION_NAME='\"${versionNameProvider.get()}\"'",
+                        // Debug info names sources relative to the checkout and its compilation
+                        // directory ".": the build directory AGP picks carries a hash of these
+                        // flags, the commit count among them, and the checkout path differs between
+                        // builds. Recorded as is, both changed dex2oat and liboat_hook.so (build-id,
+                        // debuglink CRC, the DWARF liboat_hook.so ships) in every release although
+                        // their sources had not changed, and put the build machine's paths in them.
+                        "-ffile-prefix-map=${rootDir.absolutePath}=.",
+                        "-fdebug-compilation-dir=.",
                         // parallel_hashmap reaches for <emmintrin.h> whenever __SSE2__ is defined,
                         // and that header's static inline intrinsics arrive twice on the x86 ABIs:
                         // dex_builder.ixx and dex_helper.ixx each include phmap in their global
