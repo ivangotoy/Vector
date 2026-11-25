@@ -30,8 +30,7 @@ import org.matrix.vector.manager.ui.screens.update.pageState
  * list the update page reads, filtered to the canaries; the commits are the feed the home screen
  * loads on launch, served from disk. The screen this feeds used to make a request of its own for a
  * second view of the first of those, and could still say nothing about the second.
- */
-/**
+ *
  * The constructor's parameters default to what the app runs with; every one has a default, so the
  * no-argument constructor the platform's ViewModel factory calls still exists. Host tests pass
  * their own.
