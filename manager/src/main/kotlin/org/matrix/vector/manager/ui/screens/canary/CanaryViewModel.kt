@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import org.matrix.vector.manager.ui.screens.update.pageState
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
@@ -52,7 +53,8 @@ class CanaryViewModel : ViewModel() {
      */
     private val fallback = MutableStateFlow<FrameworkUpdateState?>(null)
 
-    private val update = combine(updates.state, fallback) { shared, local -> local ?: shared }
+    // The daemon state, once it publishes one, wins over this page fallback (see pageState).
+    private val update = combine(updates.state, fallback, ::pageState)
 
     val board: StateFlow<CanaryBoard> =
         combine(feed, update, closed, attempted) { commits, state, issues, asked ->
