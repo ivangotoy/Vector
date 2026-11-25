@@ -439,5 +439,15 @@ build = [i for i, s in enumerate(steps) if "module-ci.sh build src" in s]
 sys.exit(0 if len(test) == 1 and build and test[0] < build[0] and "secrets." not in steps[test[0]] else 1)
 PY
 
+# overlapping dispatches queue: a workflow-level concurrency group that does not cancel the run in progress
+python3 -I - "$ROOT/.forgejo/workflows/module-release.yml" <<'PY' && ok "module-release.yml: runs queue in one concurrency group" \
+    || bad "module-release.yml: no workflow-level concurrency group with cancel-in-progress false"
+import re, sys
+m = re.search(r"^concurrency:\n((?:[ \t]+.*\n)+)", open(sys.argv[1]).read(), re.M)
+block = m.group(1) if m else ""
+keys = dict(re.findall(r"^\s+([\w-]+):\s*(\S+)\s*$", block, re.M))
+sys.exit(0 if keys.get("group") and keys.get("cancel-in-progress") == "false" else 1)
+PY
+
 echo
 if [ "$fails" = 0 ]; then echo "all checks passed"; else echo "$fails check(s) failed"; exit 1; fi
