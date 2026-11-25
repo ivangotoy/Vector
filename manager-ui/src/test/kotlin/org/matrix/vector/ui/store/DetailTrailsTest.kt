@@ -9,7 +9,12 @@ import org.junit.Test
  * is known to name an older release than the list's entry.
  */
 class DetailTrailsTest {
-    private fun module(latest: String?, time: String? = null, betaTime: String? = null) =
+    private fun module(
+        latest: String?,
+        time: String? = null,
+        betaTime: String? = null,
+        beta: String? = null,
+    ) =
         OnlineModule(
             name = "com.example.module",
             description = null,
@@ -21,6 +26,7 @@ class DetailTrailsTest {
             latestRelease = latest,
             latestReleaseTime = time,
             latestBetaReleaseTime = betaTime,
+            latestBetaRelease = beta,
         )
 
     @Test
@@ -54,5 +60,12 @@ class DetailTrailsTest {
     fun anUndecidablePairDoesNotTrail() {
         assertFalse(detailTrails(module("beta"), module("50-2.0"), considerBeta = true))
         assertFalse(detailTrails(module(null), module("50-2.0"), considerBeta = true))
+    }
+
+    @Test
+    fun theSameBetaTagNeverTrailsWhateverItsTime() {
+        val entry = module("50-2.0", betaTime = "2026-03-05T00:00:00Z", beta = "51-2.1-beta")
+        val detail = module("50-2.0", betaTime = "2026-03-01T00:00:00Z", beta = "51-2.1-beta")
+        assertFalse(detailTrails(detail, entry, considerBeta = true))
     }
 }

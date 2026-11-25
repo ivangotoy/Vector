@@ -185,6 +185,8 @@ class RepoDetailsViewModel(
     fun retry() {
         if (!state.value.detailSetAside) return fetchDetails()
         viewModelScope.launch {
+            // The forced refresh walks every page: the page shows it is working meanwhile.
+            _fetch.value = DetailFetch.Loading
             dataSource.refresh(force = true)
             fetchDetails()
         }
@@ -259,8 +261,8 @@ internal fun pageModule(
  * release times when both carry one (ISO-8601 in UTC on both hosts, so the text orders as the
  * times do, as StoreApi.correct compares them), else by the version code in the tag. A record
  * without a summary of its own names its newest published release, the stand-in latestOn uses.
- * With [considerBeta], a strictly earlier beta time also counts. Anything undecidable is not known
- * to trail.
+ * With [considerBeta], a strictly earlier beta time also counts, unless both name the same beta
+ * tag. Anything undecidable is not known to trail.
  */
 internal fun detailTrails(detail: OnlineModule, entry: OnlineModule, considerBeta: Boolean): Boolean {
     val entryLatest = entry.latestRelease
@@ -278,7 +280,10 @@ internal fun detailTrails(detail: OnlineModule, entry: OnlineModule, considerBet
         val entryCode = RepoVersion.parse(entryLatest)?.versionCode
         return detailCode != null && entryCode != null && detailCode < entryCode
     }
-    if (considerBeta) {
+    // The same beta tag is the same beta, as for stable releases, whatever its time says.
+    val sameBeta =
+        detail.latestBetaRelease != null && detail.latestBetaRelease == entry.latestBetaRelease
+    if (considerBeta && !sameBeta) {
         val detailBeta = detail.latestBetaReleaseTime
         val entryBeta = entry.latestBetaReleaseTime
         if (!detailBeta.isNullOrEmpty() && !entryBeta.isNullOrEmpty() && detailBeta < entryBeta)
