@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.CacheControl
 import okhttp3.OkHttpClient
@@ -83,11 +84,19 @@ open class StoreRepository(
      * [force] is pull-to-refresh: it bypasses the cache rather than revalidating against it, and
      * reads the site to its last page, because a user who pulls is telling us they think what they
      * are looking at is stale.
+     *
+     * A call that finds a refresh already running downloads nothing of its own. An unforced one
+     * returns at once; a forced one returns once that refresh has ended, so a caller that goes on
+     * to compare against the catalogue (the module page's retry) compares against its result.
      */
     override suspend fun refresh(force: Boolean) {
-        // A second caller during a refresh is a no-op rather than a queued duplicate of the whole
-        // download.
-        if (!refreshing.tryLock()) return
+        // A second caller during a refresh is not a queued duplicate of the whole download: an
+        // unforced one is dropped, a forced one waits for the refresh in flight and takes its
+        // catalogue.
+        if (!refreshing.tryLock()) {
+            if (force) refreshing.withLock {}
+            return
+        }
         try {
             if (!force && isCurrent(_catalog.value)) return
             _isRefreshing.value = true
