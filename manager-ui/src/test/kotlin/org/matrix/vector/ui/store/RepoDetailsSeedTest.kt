@@ -109,4 +109,16 @@ class RepoDetailsSeedTest {
         // StoreRepository.complete's rule: only a record of the very release the entry names.
         assertEquals(listOf("49-1.9"), shown(module("49-1.9", listOf("49-1.9")), module("50-2.0", listOf("50-2.0"))))
     }
+
+    @Test
+    fun aDetailWithoutASummaryIsComparedByItsNewestRelease() {
+        val detail = module(null, listOf("50-2.0", "49-1.9"))
+        assertEquals(listOf("50-2.0", "49-1.9"), shown(module("50-2.0", null), detail))
+        assertEquals(null, shown(module("51-2.1", null), detail))
+    }
+
+    @Test
+    fun anEntryThatNamesNoReleaseTakesTheDetail() {
+        assertEquals(listOf("49-1.9"), shown(module(null, null), module("49-1.9", listOf("49-1.9"))))
+    }
 }

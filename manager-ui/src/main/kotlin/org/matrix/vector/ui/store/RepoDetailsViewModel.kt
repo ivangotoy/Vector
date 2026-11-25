@@ -211,13 +211,21 @@ class RepoDetailsViewModel(
  * corrected the entry to a newer release since. Shown anyway, the page offered the older APK while
  * the list offered the newer one, and the row kept asking. The rule is the one
  * StoreRepository.complete applies before laying a record over an entry: the same latestRelease and
- * the same latestBetaReleaseTime. Without a catalogue entry the detail is all there is.
+ * the same latestBetaReleaseTime. A record without a summary of its own is compared through its
+ * newest published release, the stand-in [latestOn] uses, and a beta time only when both name one;
+ * an entry that names no release cannot be contradicted. Without an entry the detail is all there
+ * is.
  */
-internal fun pageModule(seed: OnlineModule?, detail: OnlineModule?): OnlineModule? =
-    when {
-        detail == null -> seed
-        seed == null -> detail
-        detail.latestRelease == seed.latestRelease &&
-            detail.latestBetaReleaseTime == seed.latestBetaReleaseTime -> detail
-        else -> seed
-    }
+internal fun pageModule(seed: OnlineModule?, detail: OnlineModule?): OnlineModule? {
+    if (detail == null) return seed
+    if (seed?.latestRelease == null) return detail
+    val detailLatest =
+        detail.latestRelease
+            ?: detail.releases.orEmpty()
+                .firstOrNull { it.isDraft != true && it.isPrerelease != true }
+                ?.tagName
+    if (detailLatest != seed.latestRelease) return seed
+    val betaTimes = listOf(detail.latestBetaReleaseTime, seed.latestBetaReleaseTime)
+    if (betaTimes.all { it != null } && betaTimes[0] != betaTimes[1]) return seed
+    return detail
+}
