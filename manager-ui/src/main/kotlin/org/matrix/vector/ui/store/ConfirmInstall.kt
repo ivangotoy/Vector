@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 /**
  * The consent gate — and parasitically it is the *only* one.
@@ -85,8 +86,12 @@ fun ConfirmInstall(
     )
 }
 
-/** The host an APK is downloaded from, as the dialog names it, or null for a URL without one. */
+/**
+ * The host an APK is downloaded from, as the dialog names it, or null for a URL without one.
+ *
+ * Parsed by OkHttp, as the installer's request is: java.net.URI refused URLs the installer still
+ * fetches (a space in the path, `_` or non-ASCII in the host), and the dialog then named no host.
+ * A non-ASCII host is shown in the punycode form that is actually contacted.
+ */
 internal fun downloadHost(url: String?): String? =
-    runCatching { java.net.URI(url ?: return null).host }.getOrNull()?.lowercase()?.takeIf {
-        it.isNotEmpty()
-    }
+    url?.toHttpUrlOrNull()?.host?.takeIf { it.isNotEmpty() }

@@ -13,6 +13,15 @@ class DownloadHostTest {
     }
 
     @Test
+    fun aUrlTheInstallerFetchesNamesItsHost() {
+        // OkHttp, which the installer downloads with, takes these; java.net.URI refused them.
+        assertEquals("example.com", downloadHost("https://example.com/owner/repo/my module.apk"))
+        assertEquals("example.com", downloadHost("https://example.com/a|b.apk"))
+        assertEquals("dl_mirror.example.com", downloadHost("https://dl_mirror.example.com/m.apk"))
+        assertEquals("xn--exmple-cua.com", downloadHost("https://exämple.com/m.apk"))
+    }
+
+    @Test
     fun noHostNoLine() {
         assertNull(downloadHost(null))
         assertNull(downloadHost("module.apk"))
