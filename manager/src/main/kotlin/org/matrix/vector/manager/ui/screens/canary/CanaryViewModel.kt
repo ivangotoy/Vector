@@ -16,8 +16,10 @@ import org.matrix.vector.manager.data.github.CommunityFeed
 import org.matrix.vector.manager.data.github.GitHubRepository
 import org.matrix.vector.manager.data.repository.CanaryBoard
 import org.matrix.vector.manager.data.repository.CanaryLayout
+import org.matrix.vector.manager.data.repository.FrameworkUpdateRepository
 import org.matrix.vector.manager.data.repository.FrameworkUpdateState
 import org.matrix.vector.manager.di.ServiceLocator
+import org.matrix.vector.manager.ipc.DaemonClient
 import org.matrix.vector.manager.logW
 import org.matrix.vector.manager.ui.screens.update.pageState
 
@@ -29,11 +31,18 @@ import org.matrix.vector.manager.ui.screens.update.pageState
  * loads on launch, served from disk. The screen this feeds used to make a request of its own for a
  * second view of the first of those, and could still say nothing about the second.
  */
-class CanaryViewModel : ViewModel() {
-
-    private val daemon = ServiceLocator.daemon
-    private val github = ServiceLocator.github
-    private val updates = ServiceLocator.frameworkUpdates
+/**
+ * The constructor's parameters default to what the app runs with; every one has a default, so the
+ * no-argument constructor the platform's ViewModel factory calls still exists. Host tests pass
+ * their own.
+ */
+class CanaryViewModel(
+    private val daemon: DaemonClient = ServiceLocator.daemon,
+    private val github: GitHubRepository = ServiceLocator.github,
+    private val updates: FrameworkUpdateRepository = ServiceLocator.frameworkUpdates,
+    /** This manager's own version, the fallback's yardstick when the daemon does not answer. */
+    private val ownVersionCode: Long = BuildConfig.VERSION_CODE.toLong(),
+) : ViewModel() {
 
     private val feed = MutableStateFlow(CommunityFeed())
     private val closed = MutableStateFlow<List<ClosedIssue>>(emptyList())
@@ -54,7 +63,7 @@ class CanaryViewModel : ViewModel() {
     private val fallback = MutableStateFlow<FrameworkUpdateState?>(null)
 
     // The daemon state, once it publishes one, wins over this page fallback (see pageState).
-    private val update = combine(updates.state, fallback, ::pageState)
+    internal val update = combine(updates.state, fallback, ::pageState)
 
     val board: StateFlow<CanaryBoard> =
         combine(feed, update, closed, attempted) { commits, state, issues, asked ->
@@ -78,7 +87,7 @@ class CanaryViewModel : ViewModel() {
                     0L
                 }
             if (framework > 0) updates.refresh(framework, daemon.getBuildStamp().getOrNull())
-            else fallback.value = updates.evaluate(BuildConfig.VERSION_CODE.toLong())
+            else fallback.value = updates.evaluate(ownVersionCode)
             attempted.value = true
         }
         viewModelScope.launch {

@@ -17,6 +17,9 @@ import org.matrix.vector.ipc.IManagerService
 import org.matrix.vector.manager.BuildConfig
 import org.matrix.vector.manager.data.repository.FlashStep
 import org.matrix.vector.manager.data.repository.FrameworkUpdateState
+import org.matrix.vector.manager.data.repository.FrameworkInstaller
+import org.matrix.vector.manager.data.repository.FrameworkUpdateRepository
+import org.matrix.vector.manager.ipc.DaemonClient
 import org.matrix.vector.manager.di.ServiceLocator
 import org.matrix.vector.manager.logE
 import org.matrix.vector.manager.logW
@@ -60,11 +63,20 @@ data class RootState(val code: Int = IManagerService.ROOT_UNKNOWN) {
         }
 }
 
-class FrameworkUpdateViewModel : ViewModel() {
-
-    private val daemon = ServiceLocator.daemon
-    private val updates = ServiceLocator.frameworkUpdates
-    private val installer = ServiceLocator.frameworkInstaller
+/**
+ * The constructor's parameters default to what the app runs with; every one has a default, so the
+ * no-argument constructor the platform's ViewModel factory calls still exists. Host tests pass
+ * their own.
+ */
+class FrameworkUpdateViewModel(
+    private val daemon: DaemonClient = ServiceLocator.daemon,
+    private val updates: FrameworkUpdateRepository = ServiceLocator.frameworkUpdates,
+    private val installer: FrameworkInstaller = ServiceLocator.frameworkInstaller,
+    private val updateVariant: StateFlow<String> = ServiceLocator.settings.updateVariant,
+    private val setUpdateVariant: (String) -> Unit = ServiceLocator.settings::setUpdateVariant,
+    /** This manager's own version, the fallback's yardstick when the daemon does not answer. */
+    private val ownVersionCode: Long = BuildConfig.VERSION_CODE.toLong(),
+) : ViewModel() {
 
     /**
      * The releases laid out against this manager's own version, held by this page alone, for when
@@ -83,7 +95,6 @@ class FrameworkUpdateViewModel : ViewModel() {
 
     val flash: StateFlow<FlashStep> = installer.state
 
-    private val settings = ServiceLocator.settings
 
     private val explicit = MutableStateFlow<Long?>(null)
 
@@ -163,13 +174,13 @@ class FrameworkUpdateViewModel : ViewModel() {
      * choice was the other one.
      */
     val chosenZip: StateFlow<CanaryArtifact?> =
-        combine(selected, settings.updateVariant) { release, variant ->
+        combine(selected, updateVariant) { release, variant ->
                 val zips = release?.zips.orEmpty()
                 zips.firstOrNull { it.variant.key == variant } ?: release?.defaultZip
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    fun chooseVariant(variant: ZipVariant) = settings.setUpdateVariant(variant.key)
+    fun chooseVariant(variant: ZipVariant) = setUpdateVariant(variant.key)
 
     /**
      * Everything the installer has said, straight from the installer.
@@ -205,7 +216,7 @@ class FrameworkUpdateViewModel : ViewModel() {
             // build among the releases, so a canary tapped there opens on that build rather than
             // on an empty page. Kept on this page: the shared state stays the daemon's alone.
             if (installed > 0) updates.refresh(installed, daemon.getBuildStamp().getOrNull())
-            else fallback.value = updates.evaluate(BuildConfig.VERSION_CODE.toLong())
+            else fallback.value = updates.evaluate(ownVersionCode)
         }
     }
 
