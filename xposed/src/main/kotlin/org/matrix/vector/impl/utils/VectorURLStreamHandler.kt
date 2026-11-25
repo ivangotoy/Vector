@@ -69,9 +69,14 @@ internal class VectorURLStreamHandler(private val jarFileName: String) : Handler
             if (!connected) {
                 // Each connection reads through a JarFile of its own, closed with its stream: the
                 // handler's is only for the lookup and is closed once the URL is handed out.
+                // A miss hands out no stream, so nothing else would close the JarFile just opened.
                 jarEntry =
                     getJarFile().getEntry(entryName)
-                        ?: throw FileNotFoundException("URL=$url, zipfile=$jarFileName")
+                        ?: run {
+                            connectionJarFile?.close()
+                            connectionJarFile = null
+                            throw FileNotFoundException("URL=$url, zipfile=$jarFileName")
+                        }
                 connected = true
             }
         }
