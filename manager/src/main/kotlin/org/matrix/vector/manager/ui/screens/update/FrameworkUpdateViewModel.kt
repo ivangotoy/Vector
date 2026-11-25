@@ -218,6 +218,12 @@ class FrameworkUpdateViewModel : ViewModel() {
      * the daemon had quietly finished.
      */
     fun flash() {
+        // The Retry of a failed flash reaches here past the disabled Install button: against the
+        // fallback the direction is judged by the manager's version, not the installed framework.
+        if (onFallback.value) {
+            logE("update: flash refused, the daemon has not reported the installed framework")
+            return
+        }
         val zip =
             chosenZip.value
                 ?: run {
