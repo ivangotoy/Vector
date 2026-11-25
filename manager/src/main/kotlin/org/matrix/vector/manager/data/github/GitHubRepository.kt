@@ -343,7 +343,7 @@ class GitHubRepository(
             var page = state.pageWithinCursor.coerceAtLeast(1)
 
             var added = 0
-            repeat(maxPages) {
+            for (request in 1..maxPages) {
                 val url = "$API/$REPO/commits?until=${iso8601(cursor)}&per_page=100&page=$page"
                 val result =
                     runCatching {
@@ -354,10 +354,11 @@ class GitHubRepository(
                 val batch = result.getOrNull()
                 // A refused or failed request is not the end of history. Leaving `complete` false
                 // means the next call tries again rather than declaring the archive finished
-                // because GitHub was rate limiting at the time.
+                // because GitHub was rate limiting at the time. This call stops: the next request
+                // would be the same URL.
                 if (batch == null) {
                     logW("feed: history backfill $url unavailable", result.exceptionOrNull())
-                    return@repeat
+                    break
                 }
 
                 if (batch.isEmpty()) {

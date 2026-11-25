@@ -61,6 +61,18 @@ class GitHubRepositoryTest {
         }
 
     @Test
+    fun aFailedHistoryPageIsAskedOncePerCall() {
+        val repository = repository()
+        runBlocking { repository.load(GitHubRepository.Freshness.Revalidate) }
+        asked.clear()
+
+        // The fixture answers every history page with a 404.
+        runBlocking { repository.backfill(maxPages = 3) }
+
+        assertEquals(1, asked.count { "/commits?until=" in it.url.toString() })
+    }
+
+    @Test
     fun aCachedLoadOnlyAsksTheCache() {
         runBlocking { repository().load(GitHubRepository.Freshness.Cached) }
 
