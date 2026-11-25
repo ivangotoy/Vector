@@ -217,7 +217,12 @@ class CommitArchive(private val file: File, private val stateFile: File, private
                     tmp.writeText(
                         unique.joinToString("\n", postfix = "\n") { json.encodeToString(it) }
                     )
-                    tmp.renameTo(file)
+                    // A failed rename leaves the old file in place: the state below must keep
+                    // describing that file, or compaction would believe it already happened.
+                    if (!tmp.renameTo(file)) {
+                        tmp.delete()
+                        error("could not replace ${file.name}")
+                    }
                     parsed = unique
                     lineCount = unique.size
                 }

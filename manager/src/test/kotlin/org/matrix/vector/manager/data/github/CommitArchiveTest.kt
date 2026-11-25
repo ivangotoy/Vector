@@ -1,10 +1,12 @@
 package org.matrix.vector.manager.data.github
 
+import java.io.File
 import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.locks.LockSupport
 import kotlin.concurrent.thread
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assume.assumeFalse
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -78,5 +80,27 @@ class CommitArchiveTest {
 
     private companion object {
         const val ROUNDS = 100
+    }
+
+    @Test
+    fun aFailedCompactionIsTriedAgain() {
+        val unique = (0 until 10).map(::commit)
+        val archive = archiveOf(unique + unique + unique)
+        val file = dir.root.listFiles()!!.first { it.readLines().size == 30 }
+        // The temporary exists and the directory is read-only: the write succeeds, the rename not.
+        File(file.parentFile, file.name + ".tmp").createNewFile()
+        dir.root.setWritable(false)
+        try {
+            // Root ignores the mode, and then nothing fails; the test needs an ordinary user.
+            assumeFalse(dir.root.canWrite())
+            archive.compactIfWasteful()
+        } finally {
+            dir.root.setWritable(true)
+        }
+        assertEquals(30, file.readLines().size)
+
+        archive.compactIfWasteful()
+
+        assertEquals(10, file.readLines().size)
     }
 }
