@@ -121,4 +121,14 @@ class RepoDetailsSeedTest {
     fun anEntryThatNamesNoReleaseTakesTheDetail() {
         assertEquals(listOf("49-1.9"), shown(module(null, null), module("49-1.9", listOf("49-1.9"))))
     }
+
+    @Test
+    fun aDetailSetAsideReadsAsAPartialFetch() {
+        val scope = MainScope()
+        val source = Source(module("50-2.0", null), module("49-1.9", listOf("49-1.9")))
+        val viewModel = RepoDetailsViewModel(name, source, Settings, null, scope)
+        val collecting = scope.launch { viewModel.state.collect {} }
+        assertEquals(DetailFetch.Unavailable, viewModel.state.value.fetch)
+        collecting.cancel()
+    }
 }

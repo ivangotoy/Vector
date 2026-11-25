@@ -152,7 +152,13 @@ class RepoDetailsViewModel(
                     releases = releasesFor(module, channel),
                     installed = installed[packageName],
                     latest = latestFor(module, channel),
-                    fetch = fetch,
+                    // A record set aside for trailing the entry (it came from the mirror or the
+                    // cache, the site did not answer) is reported as the partial fetch it is, so
+                    // the page says it shows what the list knew rather than that nothing exists.
+                    fetch =
+                        if (detail != null && module !== detail && fetch == DetailFetch.Loaded)
+                            DetailFetch.Unavailable
+                        else fetch,
                     channel = channel,
                     storeInstall = preferences.storeInstall,
                 )
