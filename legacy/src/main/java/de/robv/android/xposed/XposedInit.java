@@ -119,9 +119,11 @@ public final class XposedInit {
             // cleared) when the hook ends, also when the creation or the hook throws.
             @Override
             protected void beforeHookedMethod(MethodHookParam<?> param) {
-                final int resKeyIdx = getParameterIndexByType(param.method, classResKey);
+                // Pushed before anything here can throw: the after hook runs even when this one
+                // threw, and its pop must take this entry, not the outer creation's.
                 Object outer = latestResKey.get();
                 outerResKeys.get().push(outer != null ? outer : outerResKeys);
+                final int resKeyIdx = getParameterIndexByType(param.method, classResKey);
                 latestResKey.set(param.args[resKeyIdx]);
             }
 
