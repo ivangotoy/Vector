@@ -549,7 +549,11 @@ private fun ReleasesTab(
     if (state.releases.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(
-                text = stringResource(UiR.string.store_releases_none),
+                text =
+                    stringResource(
+                        if (state.releasesUnknown) UiR.string.store_detail_partial
+                        else UiR.string.store_releases_none
+                    ),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )

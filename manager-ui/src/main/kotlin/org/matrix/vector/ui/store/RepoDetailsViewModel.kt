@@ -49,6 +49,14 @@ data class RepoDetailsState(
     val installable: Release?
         get() = releases.firstOrNull { it.apks.isNotEmpty() }
 
+    /**
+     * Whether an empty release list says only that the full record did not arrive: the page then
+     * shows what the module list knew, and "published no releases" would be a claim about the
+     * module that nothing here supports.
+     */
+    val releasesUnknown: Boolean
+        get() = releases.isEmpty() && fetch == DetailFetch.Unavailable
+
     /** The version the bar's install would bring, which is what its label has to name. */
     val offered: RepoVersion?
         get() = installable?.version

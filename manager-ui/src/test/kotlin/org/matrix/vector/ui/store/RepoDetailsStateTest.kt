@@ -69,4 +69,14 @@ class RepoDetailsStateTest {
         assertTrue(state.upgradable)
         assertFalse(state.sameVersion)
     }
+
+    @Test
+    fun emptyReleasesAfterAPartialFetchAreUnknownNotNone() {
+        assertTrue(RepoDetailsState(fetch = DetailFetch.Unavailable).releasesUnknown)
+        assertFalse(RepoDetailsState(fetch = DetailFetch.Loaded).releasesUnknown)
+        assertFalse(
+            RepoDetailsState(releases = listOf(previous), fetch = DetailFetch.Unavailable)
+                .releasesUnknown
+        )
+    }
 }
