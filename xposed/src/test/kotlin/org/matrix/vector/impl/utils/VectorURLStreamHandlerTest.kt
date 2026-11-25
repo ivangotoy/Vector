@@ -60,8 +60,8 @@ class VectorURLStreamHandlerTest {
     /** Descriptors of this process open on [file], read from /proc. */
     private fun openDescriptorsOf(file: File): Int =
         File("/proc/self/fd").listFiles().orEmpty().count { fd ->
-            runCatching { java.nio.file.Files.readSymbolicLink(fd.toPath()).toString() }.getOrNull() ==
-                file.canonicalPath
+            runCatching { java.nio.file.Files.readSymbolicLink(fd.toPath()).toString() }
+                .getOrNull() == file.canonicalPath
         }
 
     @Test
