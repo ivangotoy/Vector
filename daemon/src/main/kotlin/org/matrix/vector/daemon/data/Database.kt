@@ -10,6 +10,36 @@ import org.matrix.vector.daemon.utils.FakeContext
 private const val TAG = "VectorDatabase"
 private const val DB_VERSION = 5
 
+/**
+ * Why [file] must not replace the module database, or null when it may.
+ *
+ * A database whose user_version lies above [DB_VERSION] but below LSPosed's 101 is wiped by
+ * [Database.onDowngrade], and a file that is not an SQLite database cannot be opened as the module
+ * database at all. The swap replaces the live file before the reopen, so either would cost every
+ * module and scope the restore replaced; both are refused before the swap.
+ */
+internal fun restoreRefusal(file: File): String? {
+  val header = ByteArray(100)
+  val read =
+      file.inputStream().use { input ->
+        var n = 0
+        while (n < header.size) {
+          val r = input.read(header, n, header.size - n)
+          if (r < 0) break
+          n += r
+        }
+        n
+      }
+  if (read < header.size ||
+      !header.copyOf(16).contentEquals("SQLite format 3\u0000".toByteArray()))
+      return "not an SQLite database"
+  // The header's user_version: big-endian, at offset 60.
+  val version = java.nio.ByteBuffer.wrap(header, 60, 4).int
+  if (version > DB_VERSION && version < 101)
+      return "database version $version is newer than this daemon's ($DB_VERSION)"
+  return null
+}
+
 class Database(context: Context? = FakeContext()) :
     SQLiteOpenHelper(context, FileSystem.dbPath.absolutePath, null, DB_VERSION) {
 

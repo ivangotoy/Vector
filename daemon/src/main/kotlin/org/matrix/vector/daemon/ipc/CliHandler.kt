@@ -11,6 +11,7 @@ import org.matrix.vector.daemon.CliResponse
 import org.matrix.vector.daemon.data.ConfigCache
 import org.matrix.vector.daemon.data.ModuleDatabase
 import org.matrix.vector.daemon.data.PreferenceStore
+import org.matrix.vector.daemon.data.restoreRefusal
 
 object CliHandler {
 
@@ -270,6 +271,10 @@ object CliHandler {
         val staged = File("$currentDbPath.restore")
         try {
           sourceFile.copyTo(staged, overwrite = true)
+          // Checked on the copy, which nothing else changes before the swap.
+          restoreRefusal(staged)?.let {
+            throw IllegalArgumentException("Refusing to restore $path: $it")
+          }
         } catch (e: Exception) {
           staged.delete()
           throw e
