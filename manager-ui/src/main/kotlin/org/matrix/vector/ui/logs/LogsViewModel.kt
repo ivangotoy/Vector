@@ -633,8 +633,9 @@ class LogsViewModel(private val source: LogSource) : ViewModel() {
 
     fun setVerbose(enabled: Boolean) {
         viewModelScope.launch {
-            // A failed write leaves both flows as they were: nothing was stored, so showing the
-            // requested value would claim a setting the host does not have.
+            // A failure leaves both flows as they were: the write failed, or it went through and
+            // the value could not be read back. Either way the requested value is unconfirmed,
+            // and showing it would claim a setting the host may not have.
             val actual =
                 runCatching {
                         source.setVerboseEnabled(enabled)

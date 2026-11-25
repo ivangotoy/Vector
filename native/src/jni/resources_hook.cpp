@@ -49,8 +49,6 @@ static TYPE_GET_STRINGS ResXMLParser_getStrings = nullptr;
  * @brief Constructs the class name for the XResources class at runtime.
  */
 static std::string GetXResourcesClassName() {
-    // Use a static local variable to ensure this lookup and string manipulation
-    // only happens once.
     // Cached only once found: a lookup before the map arrived must not fix an empty answer.
     static std::mutex lock;
     static std::string name;

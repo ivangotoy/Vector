@@ -109,9 +109,6 @@ abstract public class XCallback {
     }
 
     /**
-     * @hide
-     */
-    /**
      * {@code callbacks} in the order {@link #priority} promises: higher first. The sort is stable,
      * so callbacks of equal priority keep the order they were registered in, which is the only
      * order they had before.
@@ -123,6 +120,9 @@ abstract public class XCallback {
         return callbacks;
     }
 
+    /**
+     * @hide
+     */
     public static void callAll(Param param) {
 
         if (param instanceof XC_LoadPackage.LoadPackageParam) {

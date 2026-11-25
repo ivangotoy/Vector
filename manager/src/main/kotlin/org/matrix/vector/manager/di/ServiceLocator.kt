@@ -62,10 +62,10 @@ import org.matrix.vector.ui.net.VectorDns
 @SuppressLint("StaticFieldLeak") // Application context; it outlives everything here by design.
 object ServiceLocator {
 
-    /** Survives configuration changes, unlike anything scoped to the activity. */
     /** How often package events may run [observePackageChanges]'s body; the first runs at once. */
     private const val PACKAGE_EVENT_SPACING_MS = 1_000L
 
+    /** Survives configuration changes, unlike anything scoped to the activity. */
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     @Volatile private var appContext: Context? = null
