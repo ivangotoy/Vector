@@ -61,6 +61,9 @@ android {
         buildConfig = true
     }
 
+    // android.util.Log is on the paths the host tests drive; the stub would throw instead.
+    testOptions { unitTests.isReturnDefaultValues = true }
+
     defaultConfig {
         applicationId = defaultManagerPackageName
         // Which build this manager is: the repository on CI, the machine when built locally from
