@@ -3,4 +3,5 @@
      without conflicts. English only (translatable="false"): added after the translations were made. -->
 <resources>
     <string name="store_confirm_source" translatable="false">Release %1$s, downloaded from %2$s.</string>
+    <string name="store_detail_set_aside" translatable="false">The module record that arrived names an older release than the module list, so the list\'s entry is shown. Retry reads both again.</string>
 </resources>

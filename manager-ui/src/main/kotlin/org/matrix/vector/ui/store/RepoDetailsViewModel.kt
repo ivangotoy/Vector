@@ -39,6 +39,11 @@ data class RepoDetailsState(
     val channel: StoreChannel = StoreChannel.Stable,
     /** What the Store last installed for this module, if the Store is what installed it. */
     val storeInstall: StoreInstall? = null,
+    /**
+     * The fetched record arrived but trails the list's entry, so the entry is shown instead
+     * ([pageModule]); the page says so, and its retry also reads the list again.
+     */
+    val detailSetAside: Boolean = false,
 ) {
     /**
      * The release the install bar installs: the newest one in this channel that carries an APK.
@@ -55,7 +60,7 @@ data class RepoDetailsState(
      * module that nothing here supports.
      */
     val releasesUnknown: Boolean
-        get() = releases.isEmpty() && fetch == DetailFetch.Unavailable
+        get() = releases.isEmpty() && fetch == DetailFetch.Unavailable && !detailSetAside
 
     /** The version the bar's install would bring, which is what its label has to name. */
     val offered: RepoVersion?
@@ -153,28 +158,36 @@ class RepoDetailsViewModel(
                 preferences(),
             ) { catalog, detail, fetch, installed, preferences ->
                 val seed = catalog.modules.firstOrNull { it.name == packageName }
-                val module = pageModule(seed, detail)
                 val channel = preferences.channel
+                val module = pageModule(seed, detail, channel)
                 RepoDetailsState(
                     module = module,
                     releases = releasesFor(module, channel),
                     installed = installed[packageName],
                     latest = latestFor(module, channel),
-                    // A record set aside for trailing the entry (it came from the mirror or the
-                    // cache, the site did not answer) is reported as the partial fetch it is, so
-                    // the page says it shows what the list knew rather than that nothing exists.
-                    fetch =
-                        if (detail != null && module !== detail && fetch == DetailFetch.Loaded)
-                            DetailFetch.Unavailable
-                        else fetch,
+                    fetch = fetch,
                     channel = channel,
                     storeInstall = preferences.storeInstall,
+                    detailSetAside = detail != null && module !== detail,
                 )
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RepoDetailsState())
 
     init {
         fetchDetails()
+    }
+
+    /**
+     * The page's retry. With a record set aside the detail alone would come back the same, so the
+     * list is read again from the network first (a forced refresh walks every page, which is why
+     * only this case asks for it); otherwise it is the detail fetch.
+     */
+    fun retry() {
+        if (!state.value.detailSetAside) return fetchDetails()
+        viewModelScope.launch {
+            dataSource.refresh(force = true)
+            fetchDetails()
+        }
     }
 
     fun fetchDetails() {
@@ -218,28 +231,58 @@ class RepoDetailsViewModel(
 }
 
 /**
- * The record this page shows: the fetched detail when it describes the releases the catalogue entry
- * names, otherwise the entry itself.
+ * The record this page shows: the fetched detail, unless it is known to trail the catalogue entry
+ * ([detailTrails]); then the entry itself.
  *
  * The detail can come from the mirror or the cache, which trail the site; the Store list may have
  * corrected the entry to a newer release since. Shown anyway, the page offered the older APK while
- * the list offered the newer one, and the row kept asking. The rule is the one
- * StoreRepository.complete applies before laying a record over an entry: the same latestRelease and
- * the same latestBetaReleaseTime. A record without a summary of its own is compared through its
- * newest published release, the stand-in [latestOn] uses, and a beta time only when both name one;
- * an entry that names no release cannot be contradicted. Without an entry the detail is all there
- * is.
+ * the list offered the newer one, and the row kept asking. A detail equal to or ahead of the entry
+ * is the better record (the list may be the older one, from its cache or past the early stop of the
+ * site walk) and is shown. Without an entry the detail is all there is.
  */
-internal fun pageModule(seed: OnlineModule?, detail: OnlineModule?): OnlineModule? {
+internal fun pageModule(
+    seed: OnlineModule?,
+    detail: OnlineModule?,
+    channel: StoreChannel = StoreChannel.Stable,
+): OnlineModule? {
     if (detail == null) return seed
-    if (seed?.latestRelease == null) return detail
+    if (seed == null) return detail
+    return if (detailTrails(detail, seed, considerBeta = channel == StoreChannel.Prerelease)) seed
+    else detail
+}
+
+/**
+ * Whether [detail] is known to name an older release than [entry], the rule the page and
+ * StoreRepository.complete share.
+ *
+ * The same tag is the same release, whatever the times say. Different tags are ordered by their
+ * release times when both carry one (ISO-8601 in UTC on both hosts, so the text orders as the
+ * times do, as StoreApi.correct compares them), else by the version code in the tag. A record
+ * without a summary of its own names its newest published release, the stand-in latestOn uses.
+ * With [considerBeta], a strictly earlier beta time also counts. Anything undecidable is not known
+ * to trail.
+ */
+internal fun detailTrails(detail: OnlineModule, entry: OnlineModule, considerBeta: Boolean): Boolean {
+    val entryLatest = entry.latestRelease
     val detailLatest =
         detail.latestRelease
             ?: detail.releases.orEmpty()
                 .firstOrNull { it.isDraft != true && it.isPrerelease != true }
                 ?.tagName
-    if (detailLatest != seed.latestRelease) return seed
-    val betaTimes = listOf(detail.latestBetaReleaseTime, seed.latestBetaReleaseTime)
-    if (betaTimes.all { it != null } && betaTimes[0] != betaTimes[1]) return seed
-    return detail
+    if (entryLatest != null && detailLatest != null && detailLatest != entryLatest) {
+        val detailTime = detail.latestReleaseTime
+        val entryTime = entry.latestReleaseTime
+        if (!detailTime.isNullOrEmpty() && !entryTime.isNullOrEmpty() && detailTime != entryTime)
+            return detailTime < entryTime
+        val detailCode = RepoVersion.parse(detailLatest)?.versionCode
+        val entryCode = RepoVersion.parse(entryLatest)?.versionCode
+        return detailCode != null && entryCode != null && detailCode < entryCode
+    }
+    if (considerBeta) {
+        val detailBeta = detail.latestBetaReleaseTime
+        val entryBeta = entry.latestBetaReleaseTime
+        if (!detailBeta.isNullOrEmpty() && !entryBeta.isNullOrEmpty() && detailBeta < entryBeta)
+            return true
+    }
+    return false
 }

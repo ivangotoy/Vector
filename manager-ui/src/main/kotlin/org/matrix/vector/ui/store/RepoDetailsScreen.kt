@@ -291,7 +291,8 @@ fun RepoDetailsScreen(
                         ReadmeTab(
                             module = module,
                             fetch = state.fetch,
-                            onRetry = viewModel::fetchDetails,
+                            detailSetAside = state.detailSetAside,
+                            onRetry = viewModel::retry,
                             onOpenUrl = onOpenUrl,
                             fetchSubresource = fetchSubresource,
                             contextForWebView = contextForWebView,
@@ -500,6 +501,7 @@ private fun InstallBar(
 private fun ReadmeTab(
     module: OnlineModule,
     fetch: DetailFetch,
+    detailSetAside: Boolean,
     onRetry: () -> Unit,
     onOpenUrl: (String) -> Unit,
     fetchSubresource: ((android.webkit.WebResourceRequest) -> android.webkit.WebResourceResponse?)?,
@@ -520,6 +522,10 @@ private fun ReadmeTab(
         fetch == DetailFetch.Loading ->
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
+            }
+        detailSetAside ->
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                RetryMessage(stringResource(UiR.string.store_detail_set_aside), onRetry)
             }
         fetch == DetailFetch.Unavailable ->
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -551,8 +557,12 @@ private fun ReleasesTab(
             Text(
                 text =
                     stringResource(
-                        if (state.releasesUnknown) UiR.string.store_detail_partial
-                        else UiR.string.store_releases_none
+                        when {
+                            state.detailSetAside && state.releases.isEmpty() ->
+                                UiR.string.store_detail_set_aside
+                            state.releasesUnknown -> UiR.string.store_detail_partial
+                            else -> UiR.string.store_releases_none
+                        }
                     ),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,

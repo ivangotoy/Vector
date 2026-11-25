@@ -196,8 +196,9 @@ open class StoreRepository(
      * Applied to everything published and not only once after a fetch, because every reload brings
      * the same bare entries back.
      *
-     * Only a record of the very releases the entry names: the mirror answers when the site does
-     * not, and its record may be older.
+     * Not a record that trails the entry ([detailTrails], both channels): the mirror answers when
+     * the site does not, and its record may be older. One equal to or ahead of the entry names
+     * releases the entry has not caught up with and is laid over it.
      */
     private fun complete(catalog: StoreCatalog): StoreCatalog {
         val records = records
@@ -207,8 +208,7 @@ open class StoreRepository(
                 catalog.modules.map { module ->
                     records[module.name]?.takeIf {
                         module.releases.isNullOrEmpty() &&
-                            it.latestRelease == module.latestRelease &&
-                            it.latestBetaReleaseTime == module.latestBetaReleaseTime
+                            !detailTrails(it, module, considerBeta = true)
                     } ?: module
                 }
         )
