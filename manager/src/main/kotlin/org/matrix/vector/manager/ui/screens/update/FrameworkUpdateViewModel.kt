@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.matrix.vector.ipc.IManagerService
+import org.matrix.vector.manager.BuildConfig
 import org.matrix.vector.manager.data.repository.FlashStep
 import org.matrix.vector.manager.data.repository.FrameworkUpdateState
 import org.matrix.vector.manager.di.ServiceLocator
@@ -65,7 +66,20 @@ class FrameworkUpdateViewModel : ViewModel() {
     private val updates = ServiceLocator.frameworkUpdates
     private val installer = ServiceLocator.frameworkInstaller
 
-    val update: StateFlow<FrameworkUpdateState> = updates.state
+    /**
+     * The releases laid out against this manager's own version, held by this page alone, for when
+     * the daemon does not answer: see [pageState].
+     */
+    private val fallback = MutableStateFlow<FrameworkUpdateState?>(null)
+
+    val update: StateFlow<FrameworkUpdateState> =
+        combine(updates.state, fallback, ::pageState)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, updates.state.value)
+
+    /** Whether [update] is the page's own fallback, against which nothing may be flashed. */
+    val onFallback: StateFlow<Boolean> =
+        combine(updates.state, fallback, ::usesFallback)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     val flash: StateFlow<FlashStep> = installer.state
 
@@ -187,7 +201,11 @@ class FrameworkUpdateViewModel : ViewModel() {
                     logW("update: installed framework version unavailable, update check skipped", e)
                     0L
                 }
-            updates.refresh(installed, daemon.getBuildStamp().getOrNull())
+            // As the canary list does: without the daemon's version, the manager's own locates a
+            // build among the releases, so a canary tapped there opens on that build rather than
+            // on an empty page. Kept on this page: the shared state stays the daemon's alone.
+            if (installed > 0) updates.refresh(installed, daemon.getBuildStamp().getOrNull())
+            else fallback.value = updates.evaluate(BuildConfig.VERSION_CODE.toLong())
         }
     }
 
@@ -242,3 +260,14 @@ class FrameworkUpdateViewModel : ViewModel() {
         daemon.reboot().onFailure { logE("update: reboot request failed", it) }
     }
 }
+
+/**
+ * Whether the page shows its own [local] layout: only while the daemon has published nothing
+ * ([shared] has no installed version). A state the daemon published always wins.
+ */
+internal fun usesFallback(shared: FrameworkUpdateState, local: FrameworkUpdateState?): Boolean =
+    local != null && shared.installedVersionCode <= 0
+
+/** What the update page lays out: [shared], or [local] while [usesFallback] says so. */
+internal fun pageState(shared: FrameworkUpdateState, local: FrameworkUpdateState?): FrameworkUpdateState =
+    if (local != null && usesFallback(shared, local)) local else shared

@@ -110,6 +110,7 @@ fun FrameworkUpdateScreen(
     val selected by viewModel.selected.collectAsStateWithLifecycle()
     val history by viewModel.history.collectAsStateWithLifecycle()
     val direction by viewModel.direction.collectAsStateWithLifecycle()
+    val onFallback by viewModel.onFallback.collectAsStateWithLifecycle()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var versionsOpen by remember { mutableStateOf(false) }
     // The screen is about whichever release is selected, which defaults to the update when there
@@ -185,7 +186,8 @@ fun FrameworkUpdateScreen(
                 onChoose = viewModel::chooseVariant,
                 direction = direction,
                 diverged = update.divergesFrom(selected),
-                canFlash = chosenZip?.downloadUrl != null && root.canFlash,
+                // Not against the fallback: its direction is judged by the manager's version.
+                canFlash = chosenZip?.downloadUrl != null && root.canFlash && !onFallback,
                 // Null unless root itself is the obstacle; "nothing to install" is not a root
                 // problem and must not borrow its sentence.
                 rootLabel = root.label(),
