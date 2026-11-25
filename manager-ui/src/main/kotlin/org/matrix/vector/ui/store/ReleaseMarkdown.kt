@@ -235,9 +235,11 @@ private fun inline(text: String, repoUrl: String): String {
         Regex("\\[([^\\]]+)]\\(([^)\\s]+)[^)]*\\)").replace(working) { match ->
             stash("<a href=\"${match.groupValues[2]}\">${match.groupValues[1]}</a>")
         }
-    // Bare URLs, which release notes use for compare links; a closing quote is not part of one.
+    // Bare URLs, which release notes use for compare links. The text is escaped by now, so a
+    // closing quote or angle bracket (the `<url>` autolink form) arrives as an entity and ends the
+    // URL here rather than becoming part of its target.
     working =
-        Regex("\\bhttps?://(?:(?!&quot;)[^\\s<])+").replace(working) {
+        Regex("\\bhttps?://(?:(?!&quot;|&lt;|&gt;)[^\\s<])+").replace(working) {
             stash("<a href=\"${it.value}\">${it.value}</a>")
         }
 

@@ -35,4 +35,11 @@ class ReleaseMarkdownTest {
         val html = releaseMarkdownToHtml("see \"https://example.com/x\" here", repo)
         assertTrue(html, html.contains("href=\"https://example.com/x\""))
     }
+
+    @Test
+    fun angleBracketedUrlLinksWithoutTheBracket() {
+        val html = releaseMarkdownToHtml("see <https://example.com/a> here", repo)
+        assertTrue(html, html.contains("href=\"https://example.com/a\""))
+        assertFalse(html, html.contains("&gt;\""))
+    }
 }
