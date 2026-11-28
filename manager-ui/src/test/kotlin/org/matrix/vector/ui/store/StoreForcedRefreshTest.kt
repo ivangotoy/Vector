@@ -31,7 +31,8 @@ import org.junit.Test
 
 /**
  * A forced refresh that finds another one running waits for it, so the module page's retry
- * compares against the refreshed list rather than the one the running refresh is replacing.
+ * compares against the refreshed list rather than the one the running refresh is replacing. When
+ * the one it waited for was not forced, it then makes its own forced request.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoreForcedRefreshTest {
@@ -54,6 +55,9 @@ class StoreForcedRefreshTest {
     private val entered = CountDownLatch(1)
     private val release = CountDownLatch(1)
 
+    /** For each request of the site's page, whether it bypassed the cache (a forced refresh). */
+    private val pageNoCache = CopyOnWriteArrayList<Boolean>()
+
     /** What the list said each time the record was asked for. */
     private val listAtDetail = CopyOnWriteArrayList<String?>()
     private lateinit var repository: StoreRepository
@@ -67,6 +71,7 @@ class StoreForcedRefreshTest {
                     val body =
                         when {
                             url.endsWith("/module-list/1.json") -> {
+                                pageNoCache += request.cacheControl.noCache
                                 if (hold) {
                                     hold = false
                                     entered.countDown()
@@ -128,6 +133,31 @@ class StoreForcedRefreshTest {
         runBlocking { withTimeout(10_000) { forced.join() } }
 
         assertEquals("50-2.0", seen.get())
+    }
+
+    /** Runs [first] until its page request is held, then [second], and lets both finish. */
+    private fun overlapping(first: Boolean, second: Boolean) {
+        hold = true
+        scope.launch { repository.refresh(force = first) }
+        assertEquals(true, entered.await(10, TimeUnit.SECONDS))
+        val waiting = scope.launch { repository.refresh(force = second) }
+        Thread.sleep(500)
+        release.countDown()
+        runBlocking { withTimeout(10_000) { waiting.join() } }
+    }
+
+    @Test
+    fun aForcedRefreshAfterAnUnforcedOneMakesItsOwnForcedRequest() {
+        overlapping(first = false, second = true)
+
+        assertEquals(listOf(false, true), pageNoCache.toList())
+    }
+
+    @Test
+    fun aForcedRefreshAfterAForcedOneDownloadsNothingMore() {
+        overlapping(first = true, second = true)
+
+        assertEquals(listOf(true), pageNoCache.toList())
     }
 
     private object Settings : StoreSettings {

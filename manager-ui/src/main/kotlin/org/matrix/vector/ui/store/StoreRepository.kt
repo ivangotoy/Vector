@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.CacheControl
 import okhttp3.OkHttpClient
@@ -74,6 +73,9 @@ open class StoreRepository(
     /** Held for the length of a refresh; `tryLock` leaves no window between checking and taking. */
     private val refreshing = Mutex()
 
+    /** Forced refreshes that have ended. Written under [refreshing], read by a forced waiter. */
+    @Volatile private var forcedEnded = 0L
+
     init {
         scope.launch { completeInstalled() }
     }
@@ -85,17 +87,27 @@ open class StoreRepository(
      * reads the site to its last page, because a user who pulls is telling us they think what they
      * are looking at is stale.
      *
-     * A call that finds a refresh already running downloads nothing of its own. An unforced one
-     * returns at once; a forced one returns once that refresh has ended, so a caller that goes on
-     * to compare against the catalogue (the module page's retry) compares against its result.
+     * A call that finds a refresh already running does not start a second one beside it. An
+     * unforced one returns at once. A forced one waits for it to end, so a caller that goes on to
+     * compare against the catalogue (the module page's retry) compares against a finished result:
+     * if a forced refresh ended while it waited, that result is its own and it downloads nothing;
+     * if the running one was unforced (cache revalidation, a site walk that stops early), it then
+     * runs the forced refresh it was asked for.
      */
     override suspend fun refresh(force: Boolean) {
         // A second caller during a refresh is not a queued duplicate of the whole download: an
-        // unforced one is dropped, a forced one waits for the refresh in flight and takes its
-        // catalogue.
+        // unforced one is dropped, a forced one waits for the refresh in flight. Read before the
+        // tryLock, so a forced refresh that ends between the two still counts as one this call
+        // waited for.
+        val forcedBefore = forcedEnded
         if (!refreshing.tryLock()) {
-            if (force) refreshing.withLock {}
-            return
+            if (!force) return
+            // Outside the try below: a waiter cancelled here holds no lock to give back.
+            refreshing.lock()
+            if (forcedEnded != forcedBefore) {
+                refreshing.unlock()
+                return
+            }
         }
         try {
             if (!force && isCurrent(_catalog.value)) return
@@ -134,6 +146,7 @@ open class StoreRepository(
             // rotation mid-refresh — would otherwise strand the flag at true, and with
             // pull-to-refresh reading it that is a spinner that never stops.
             _isRefreshing.value = false
+            if (force) forcedEnded++
             refreshing.unlock()
         }
     }
