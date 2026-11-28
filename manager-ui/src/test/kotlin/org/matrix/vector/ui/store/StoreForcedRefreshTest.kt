@@ -5,6 +5,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.MainScope
@@ -135,13 +136,17 @@ class StoreForcedRefreshTest {
         assertEquals("50-2.0", seen.get())
     }
 
-    /** Runs [first] until its page request is held, then [second], and lets both finish. */
+    /**
+     * Runs [first] until its page request is held, then [second], and lets both finish. [second]
+     * starts undispatched, so it has found the lock taken and is waiting on it before [first] is
+     * released.
+     */
     private fun overlapping(first: Boolean, second: Boolean) {
         hold = true
         scope.launch { repository.refresh(force = first) }
         assertEquals(true, entered.await(10, TimeUnit.SECONDS))
-        val waiting = scope.launch { repository.refresh(force = second) }
-        Thread.sleep(500)
+        val waiting =
+            scope.launch(start = CoroutineStart.UNDISPATCHED) { repository.refresh(force = second) }
         release.countDown()
         runBlocking { withTimeout(10_000) { waiting.join() } }
     }
