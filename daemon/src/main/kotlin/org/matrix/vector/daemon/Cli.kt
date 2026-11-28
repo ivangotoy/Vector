@@ -57,6 +57,28 @@ internal fun readFrame(input: DataInputStream): String {
   return String(bytes, Charsets.UTF_8)
 }
 
+/**
+ * The answer to a request whose [response] announced an attached log descriptor: [trigger] is the
+ * byte that carried it, [received] reads the descriptors that came with it, [stream] prints the
+ * log. A descriptor that did not arrive is a failure; returning [response] then printed nothing and
+ * exited 0, as if the log had been read and was empty.
+ */
+internal fun withAttachedLog(
+    response: CliResponse,
+    trigger: Int,
+    received: () -> Array<java.io.FileDescriptor>?,
+    stream: (java.io.FileDescriptor) -> Unit,
+): CliResponse {
+  val fd =
+      (if (trigger == 1) received()?.firstOrNull() else null)
+          ?: return CliResponse(
+              success = false,
+              error = "The daemon's log descriptor did not arrive",
+          )
+  stream(fd)
+  return response
+}
+
 // --- IPC Client Logic ---
 object VectorIPC {
   val gson: Gson =
@@ -94,12 +116,12 @@ object VectorIPC {
 
       // Handle Log Streaming
       if (response.isFdAttached) {
-        val hasFd = input.readByte()
-        if (hasFd.toInt() == 1) {
-          val fds = socket.getAncillaryFileDescriptors()
-          if (!fds.isNullOrEmpty()) {
-            streamLog(fds[0], request.options["follow"] as? Boolean ?: false)
-          }
+        return withAttachedLog(
+            response,
+            input.readByte().toInt(),
+            { socket.getAncillaryFileDescriptors() },
+        ) {
+          streamLog(it, request.options["follow"] as? Boolean ?: false)
         }
       }
       response
