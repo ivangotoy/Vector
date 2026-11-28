@@ -1,5 +1,6 @@
 import com.android.build.api.dsl.ApplicationDefaultConfig
 import com.android.build.api.dsl.CommonExtension
+import com.android.build.api.variant.AndroidComponentsExtension
 import com.android.build.gradle.api.AndroidBasePlugin
 import com.ncorti.ktfmt.gradle.tasks.KtfmtFormatTask
 import java.io.ByteArrayOutputStream
@@ -294,6 +295,14 @@ subprojects {
                     versionName = versionNameProvider.get()
                 }
 
+                val androidSdkDirectory =
+                    project.extensions
+                        .getByType(AndroidComponentsExtension::class.java)
+                        .sdkComponents
+                        .sdkDirectory
+                        .get()
+                        .asFile
+                        .absolutePath
                 val flags =
                     listOf(
                         "-DVERSION_CODE=${versionCodeProvider.get()}",
@@ -306,6 +315,9 @@ subprojects {
                         // their sources had not changed, and put the build machine's paths in them.
                         "-ffile-prefix-map=${rootDir.absolutePath}=.",
                         "-fdebug-compilation-dir=.",
+                        // The same for the NDK's headers, which the DWARF liboat_hook.so ships
+                        // names too: the SDK's location is the build machine's, not the build's.
+                        "-ffile-prefix-map=${androidSdkDirectory}=/android-sdk",
                         // parallel_hashmap reaches for <emmintrin.h> whenever __SSE2__ is defined,
                         // and that header's static inline intrinsics arrive twice on the x86 ABIs:
                         // dex_builder.ixx and dex_helper.ixx each include phmap in their global
