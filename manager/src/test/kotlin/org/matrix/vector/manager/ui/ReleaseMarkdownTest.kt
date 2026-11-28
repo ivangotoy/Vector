@@ -21,6 +21,11 @@ class ReleaseMarkdownTest {
     fun quoteInAnImageTargetStaysInsideTheAttribute() {
         val html = releaseMarkdownToHtml("![a](https://example.com/i.png\"onerror=\"x)", repo)
         assertFalse(html, html.contains("\"onerror=\""))
+        // The image rule itself emitted it, with the quote inside the src attribute.
+        assertTrue(
+            html,
+            html.contains("<img src=\"https://example.com/i.png&quot;onerror=&quot;x\""),
+        )
     }
 
     @Test
